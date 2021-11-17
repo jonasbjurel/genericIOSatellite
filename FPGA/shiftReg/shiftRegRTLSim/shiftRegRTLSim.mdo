@@ -1,0 +1,17 @@
+if {![file exists "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftRegRTLSim/shiftRegRTLSim.mpf"]} { 
+	project new "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftRegRTLSim" shiftRegRTLSim
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftReg_TB.v"
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftReg.v"
+	vlib  work
+	vdel -lib work -all 
+	vlib work
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftReg_TB.v"
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftReg.v"
+} else {
+	project open "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/shiftReg/shiftRegRTLSim/shiftRegRTLSim"
+	project compileall
+}
+vsim -L work -L pmi_work -L ovi_machxo2  shiftReg_TB
+view wave
+do wave.do
+run -All

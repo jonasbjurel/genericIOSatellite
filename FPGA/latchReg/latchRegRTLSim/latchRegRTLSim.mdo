@@ -1,0 +1,17 @@
+if {![file exists "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchRegRTLSim/latchRegRTLSim.mpf"]} { 
+	project new "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchRegRTLSim" latchRegRTLSim
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchReg_TB.v"
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchReg.v"
+	vlib  work
+	vdel -lib work -all 
+	vlib work
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchReg_TB.v"
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchReg.v"
+} else {
+	project open "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/latchReg/latchRegRTLSim/latchRegRTLSim"
+	project compileall
+}
+vsim -L work -L pmi_work -L ovi_machxo2  latchReg_TB
+view wave
+do wave.do
+run -All

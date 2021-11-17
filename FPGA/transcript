@@ -1,0 +1,72 @@
+# Reading pref.tcl
+ls
+# .floorplanner.ini      genericIOSatelite.lpf       latchReg        
+# .recovery              genericIOSatelite.v         moduleSim       
+# .run_manager.ini       genericIOSatelite1.sty      promote.xml     
+# .setting.ini           genericIOSateliteEnv.v      pulse           
+# .spread_sheet.ini      genericIOSateliteEnv_TB.v   pwm             
+# .spreadsheet_view.ini  genericIOSateliteRTLSim     reportview.xml  
+# Untitled.tpf           genericIOSateliteTimingSim  shiftReg        
+# a.mpf                  genericIOSateliteWave       sso_rpt.htm     
+# a.out                  genericIOSatelite_TB        transcript      
+# crc4                   genericIOSatelite_TB.v      work            
+# genericIOSatelite.ccl  genericIOSatelite_tcl.html  ws2811Decoder   
+# genericIOSatelite.ldc  genericIOSatelite_tcr.dir   ws2811Encoder   
+# genericIOSatelite.ldf  impl1                                       
+help
+# Type help <command> to get information on that command, or try one of the following:
+#   commands  List all available commands and topics.
+#   Debugging Lists debugging commands.
+#   Execution Information on controlling execution of the simulation.
+#   Tcl       Information on Tcl commands.
+#   Tk        Information on Tk commands.
+#   incrTcl   Information on incrTcl commands.
+# 
+Tcl
+# ambiguous command name "Tcl": TclFileTypes TclNamespaceViewer TclUpdate
+help Tcl
+# See help on these commands:
+#   after       fcopy      load       seek           vwait    
+#   append      file       lrange     set            while    
+#   array       fileevent  lreplace   socket         
+#   bgerror     flush      lsearch    source   	   
+#   binary      for        lset       split    	   
+#   break       foreach    lsort      string         
+#   catch       format     msgcat     subst           
+#   cd          gets       namespace  switch         
+#   clock       glob       open       tcl_endOfWord           
+#   close       global     package    tcl_findLibrary         
+#   concat      history    parray     tcl_startOfNextWord     
+#   continue    http       pid        tcl_startOfPreviousWord  
+#   dde         if         proc       tcl_wordBreakAfter             
+#   encoding    incr       puts       tcl_wordBreakBefore            
+#   eof         info       pwd        tell        	           
+#   error       interp     read       time        	           
+#   eval        join       regexp     trace       	           
+#   exec        lappend    registry   unset                          
+#   exit        lindex     regsub     update                   
+#   expr        linsert    rename     uplevel                  
+#   fblocked    list       return     upvar                    
+#   fconfigure  llength    scan       variable                
+# 
+help tcl exec
+# No help for tcl exec available.
+help exec
+# Invoke subprocess(es).
+# Usage: exec [<switches>] <arg> [<arg> ...]
+load genericIOSateliteTimingSim
+# couldn't load library "genericIOSateliteTimingSim": this library or a dependent library could not be found in library path
+load genericIOSateliteTimingSim/genericIOSateliteTimingSim.mdo
+# couldn't load library "genericIOSateliteTimingSim/genericIOSateliteTimingSim.mdo": invalid argument
+load genericIOSateliteTimingSim/genericIOSateliteTimingSim.mdo
+# couldn't load library "genericIOSateliteTimingSim/genericIOSateliteTimingSim.mdo": invalid argument
+load
+# wrong # args: should be "load file ?pkg? ?interp?"
+load
+# wrong # args: should be "load file ?pkg? ?interp?"
+load genericIOSatelite_TB/genericIOSatelite_TB.mdo
+# couldn't load library "genericIOSatelite_TB/genericIOSatelite_TB.mdo": invalid argument
+genericIOSatelite_TB/genericIOSatelite_TB.mdo
+# couldn't execute "genericIOSatelite_TB\genericIOSatelite_TB.mdo": no such file or directory
+run
+# No Design Loaded!

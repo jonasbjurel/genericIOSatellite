@@ -1,0 +1,46 @@
+onerror {resume}
+quietly WaveActivateNextPane {} 0
+add wave -noupdate -divider {Testbed input}
+add wave -noupdate /genericIOSatelite_TB/ws2811SendBuff
+add wave -noupdate /genericIOSatelite_TB/ws2811SimGenData
+add wave -noupdate /genericIOSatelite_TB/ws2811wireIn
+add wave -noupdate -divider {Testbed Output}
+add wave -noupdate /genericIOSatelite_TB/serialOutCheckReg/internal
+add wave -noupdate /genericIOSatelite_TB/outCheckReg
+add wave -noupdate /genericIOSatelite_TB/ws2811wireOut
+add wave -noupdate -divider DUT0
+add wave -noupdate /genericIOSatelite_TB/DUT0/masterClk
+add wave -noupdate /genericIOSatelite_TB/DUT0/ws2811wireIn
+add wave -noupdate /genericIOSatelite_TB/DUT0/ws2811wireOut
+add wave -noupdate /genericIOSatelite_TB/DUT0/sensorInput
+add wave -noupdate /genericIOSatelite_TB/DUT0/actuators
+add wave -noupdate -divider DUT1
+add wave -noupdate /genericIOSatelite_TB/DUT1/masterClk
+add wave -noupdate /genericIOSatelite_TB/DUT1/ws2811wireIn
+add wave -noupdate /genericIOSatelite_TB/DUT1/ws2811wireOut
+add wave -noupdate /genericIOSatelite_TB/DUT1/sensorInput
+add wave -noupdate /genericIOSatelite_TB/DUT1/actuators
+add wave -noupdate -divider DUT2
+add wave -noupdate /genericIOSatelite_TB/DUT2/masterClk
+add wave -noupdate /genericIOSatelite_TB/DUT2/ws2811wireIn
+add wave -noupdate /genericIOSatelite_TB/DUT2/ws2811wireOut
+add wave -noupdate /genericIOSatelite_TB/DUT2/sensorInput
+add wave -noupdate /genericIOSatelite_TB/DUT2/actuators
+TreeUpdate [SetDefaultTree]
+WaveRestoreCursors {{Cursor 1} {23767434411 ps} 0} {{Cursor 2} {9367 ps} 0}
+quietly wave cursor active 1
+configure wave -namecolwidth 514
+configure wave -valuecolwidth 40
+configure wave -justifyvalue left
+configure wave -signalnamewidth 0
+configure wave -snapdistance 10
+configure wave -datasetprefix 0
+configure wave -rowmargin 4
+configure wave -childrowmargin 2
+configure wave -gridoffset 0
+configure wave -gridperiod 1
+configure wave -griddelta 40
+configure wave -timeline 0
+configure wave -timelineunits ps
+update
+WaveRestoreZoom {302128147310 ps} {304256715405 ps}

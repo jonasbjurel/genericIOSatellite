@@ -1,0 +1,17 @@
+if {![file exists "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/timing/timing.mpf"]} { 
+	project new "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/timing" timing
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/impl1/genericIOSatelite_impl1_vo.vo"
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/genericIOSatelite_TB.v"
+	vlib  work
+	vdel -lib work -all 
+	vlib work
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/impl1  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/impl1/genericIOSatelite_impl1_vo.vo"
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/genericIOSatelite_TB.v"
+} else {
+	project open "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/timing/timing"
+	project compileoutofdate
+}
+vsim -sdfnoerror -sdfnowarn -L work -L pmi_work -L ovi_machxo2  +transport_path_delays +transport_int_delays genericIOSatelite_TB -sdfmax /genericIOSatelite_TB/DUT0=C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/impl1/genericIOSatelite_impl1_vo.sdf -sdfmax /genericIOSatelite_TB/DUT1=C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/impl1/genericIOSatelite_impl1_vo.sdf -sdfmax /genericIOSatelite_TB/DUT2=C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_CRC_2/impl1/genericIOSatelite_impl1_vo.sdf
+view wave
+do ../genericIOSateliteWave
+run -all

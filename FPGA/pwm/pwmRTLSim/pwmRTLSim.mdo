@@ -1,0 +1,17 @@
+if {![file exists "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwmRTLSim/pwmRTLSim.mpf"]} { 
+	project new "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwmRTLSim" pwmRTLSim
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwm_TB.v"
+	project addfile "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwm.v"
+	vlib  work
+	vdel -lib work -all 
+	vlib work
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwm_TB.v"
+	vlog  +incdir+C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm  -work work  "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwm.v"
+} else {
+	project open "C:/Users/jonas/OneDrive/Projects/ModelRailway/GenericJMRIdecoder/hardware/Satelites_Retiming/pwm/pwmRTLSim/pwmRTLSim"
+	project compileall
+}
+vsim -L work -L pmi_work -L ovi_machxo2  pwm_TB
+view wave
+do wave.do
+run -All
