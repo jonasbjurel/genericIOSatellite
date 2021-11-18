@@ -293,50 +293,27 @@ transmitted on the link first):
 #
 ### **FPGA Pinout:**
 
-  +---------------------+-------+-----------------+------------------+
-  |   I/O Name:         |  I/O  | Lattice         | TinyFPGA AX PCB  |
-  |                     |       | machxo2-1200    | Pin:             |
-  |                     |       | FPGAPin(QFP32): |                  |
-  +=====================+=======+=================+==================+
+  |   I/O Name:         |  I/O  | Lattice <br> machxo2-1200 <br> FPGAPin(QFP32) Pin:|TinyFPGA AX PCB<br> Pin:  |
+  |---------------------|:-----:|-----------------|------------------|
   | ws2811wireIn +      |   I   | 13 (LVDS 2.5V +)| 1 (LVDS 2.5V +)  |
-  +---------------------+-------+-----------------+------------------+  
   | ws2811wireIn -      |   I   | 14 (LVDS 2.5V -)| 2 (LVDS 2.5V -)  |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[0\]    |   I   | 20              | 5                |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[1\]    |   I   | 21              | 6                |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[2\]    |   I   | 23              | 7                |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[3\]    |   I   | 25              | 8                |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[4\]    |   I   | 26              | 9                |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[5\]    |   I   | 27              | 10               |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[6\]    |   I   | 28              | 11               |
-  +---------------------+-------+-----------------+------------------+
   | sensorInput\[7\]    |   I   | 12              | 22               |
-  +---------------------+-------+-----------------+------------------+
   | ws2811wireOut +     |   O   | 4 (LVDS 2.5V +) | 16 (LVDS 2.5V +) |
-  +---------------------+-------+-----------------+------------------+
   | ws2811wireOut -     |   O   | 5 (LVDS 2.5V -) | 17 (LVDS 2.5V -) |
-  +---------------------+-------+-----------------+------------------+
   | actuators\[0\]      |   O   | 11              | 21               |
-  +---------------------+-------+-----------------+------------------+
   | actuators\[1\]      |   O   | 10              | 20               |
-  +---------------------+-------+-----------------+------------------+
   | actuators\[2\]      |   O   | 9               | 19               |
-  +---------------------+-------+-----------------+------------------+
   | actuators\[3\]      |   O   | 8               | 18               |
-  +---------------------+-------+-----------------+------------------+
-  | Active (Scan- \     |   O   | 16              | 3 (Tiny FPGA LED)|
-  | indication)         |       |                 |                  |
-  +---------------------+-------+-----------------+------------------+
-  | Err (Error indi-\   |   O   | 17              | 4                |
-  | cation, Watchdog-\  |       |                 |                  |
-  | or CRC-Err)         |       |                 |                  |
-  +---------------------+-------+-----------------+------------------+
+  | Active (Scan- <br> indication)     |   O   | 16              | 3 (Tiny FPGA LED)|
+  | Err (Error indi- <br>  cation, Watchdog- <br> or CRC-Err)   |   O   | 17              | 4                |
+
 #
 
 ### **Satelite Library functionality and concepts**
@@ -346,12 +323,12 @@ transmitted on the link first):
 The Satelite library consists of two classes:
 
 1.  The sateliteLink class which manages the low-level Satelite link
-    (I.e. OSI L1, L2 and L3). It is responsible for discovery of the and
-    topology management of Satelites sitting on the Satelite link, but
-    also responsible for scanning the link (providing instructions and
-    pulling results from all the Satelites on a Satelite link,
-    responsible for the integrity of the link, and responsible for
-    delivering raw data from/to the satelite class objects of the
+    (I.e. OSI L1, L2 and L3). It is responsible for the discovery- and
+    topology management of Satelites sitting on the Satelite link, it
+    is also responsible for scanning the link (providing instructions and
+    pulling results from all the Satelites on a Satelite link),
+    as well as for the integrity of the link. It interchanges raw data   
+    from/to the satelite class objects of the
     Satelite link. The sateliteLink class has no, or very little
     knowledge around the functionality of the Satelites and their
     respective class-objects. The sateliteLink objects communicate with
@@ -1351,7 +1328,7 @@ Provides formated performance counter table report string. The `reportColumnItem
 `uint8_t linkAddr_p`*: Link address for the report.*\
 `uint8_t satAddr_p`*: Satelite address for the report.*\
 `satAdmState_t admState_p`*: Administrative state for the object being reported (sateliteLink or satelite).*\
-`satOpState_t opState_p`*: Operational state state for the object being reported (sateliteLink or satelite).*\
+`satOpState_t opState_p`*: Operational state for the object being reported (sateliteLink or satelite).*\
 `satPerformanceCounters_t* pmdata_p`*: Performance data structure.*\
 `uint16_t reportColumnItems`*: What pm data columns to include - see the format directives below.*\
 `uint16_t reportItemsMask`*: What pm data to report on - see the format directives below.*\
