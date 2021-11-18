@@ -104,191 +104,50 @@ transmitted on the link first):
 
 **Link Mater out - A:**
 
-+---------------------+------------------------------------------------+
-| Field/Bits          | Description                                    |
-+=====================+================================================+
-| \[7:0\]             | Shall be set to 0                              |
-| SensorVal-PAD       |                                                |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[3\] | Actuator value, dependent on ActMode\[3\]      |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[2\] | Actuator value, dependent on ActMode\[2\]      |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[1\] | Actuator value, dependent on ActMode\[1\]      |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[0\] | Actuator value, dependent on ActMode\[0\]      |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Actuator Mode:\                                |
-| ActMode\[3\]        | **SATMODE_LOW(0)**: logical low,\              |
-|                     | **SATMODE_HIGH(1)**: logical high,\            |
-|                     | **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled|
-|                     | by ActVal\[3\](%),\                            |
-|                     | **SATMODE_PWM100(3)**: 100 Hz PWM controlled by|
-|                     | ActVal\[3\](%),\                               |
-|                     | **SATMODE_PULSE(4)**: Single High              |
-|                     | pulse controlled by ActVal\[3\](ms),\          |
-|                     | **SATMODE_PULSE_INV(5)**: Single Low pulse     |
-|                     | controlled by ActVal\[3\](ms)                  |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Actuator Mode:\                                |
-| ActMode\[2\]        | **SATMODE_LOW(0)**: logical low,\              |
-|                     | **SATMODE_HIGH(1)**: logical high,\            |
-|                     | **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled|
-|                     | by ActVal\[2\](%),\                            |
-|                     | **SATMODE_PWM100(3)**: 100 Hz PWM controlled by|
-|                     | ActVal\[2\](%),\                               |
-|                     | **SATMODE_PULSE(4)**: Single High              |
-|                     | pulse controlled by ActVal\[2\](ms),\          |
-|                     | **SATMODE_PULSE_INV(5)**: Single Low pulse     |
-|                     | controlled by\                                 |
-|                     | ActVal\[2\](ms)                                |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Actuator Mode:\                                |
-| ActMode\[1\]        | **SATMODE_LOW(0)**: logical low,\              |
-|                     | **SATMODE_HIGH(1)**: logical high,\            |
-|                     | **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled|
-|                     | by ActVal\[1\](%),\                            |
-|                     | **SATMODE_PWM100(3)**: 100 Hz PWM controlled by|
-|                     | ActVal\[1\](%),\                               |
-|                     | **SATMODE_PULSE(4)**: Single High              |
-|                     | pulse controlled by ActVal\[1\](ms),\          |
-|                     | **SATMODE_PULSE_INV(5)**: Single Low pulse     |
-|                     | controlled by\                                 |
-|                     | ActVal\[1\](ms)                                |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Actuator Mode:\                                |
-| ActMode\[0\]        | **SATMODE_LOW(0)**: logical low,\              |
-|                     | **SATMODE_HIGH(1)**: logical high,\            |
-|                     | **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled|
-|                     | by ActVal\[0\](%),\                            |
-|                     | **SATMODE_PWM100(3)**: 100 Hz PWM controlled by|
-|                     | ActVal\[0\](%),\                               |
-|                     | **SATMODE_PULSE(4)**: Single High              |
-|                     | pulse controlled by ActVal\[0\](ms),\          |
-|                     | **SATMODE_PULSE_INV(5)**: Single Low pulse     |
-|                     | controlled by\                                 |
-|                     | ActVal\[0\](ms)                                |
-+---------------------+------------------------------------------------+
-| cmdcmdWdErr         | Generate a watchdog error in the feed-back(fb) |
-|                     | message, this is nonintrusive and will not     |
-|                     | disable actuators.                             |
-+---------------------+------------------------------------------------+
-| cmdEnable           | Enable Satelite: 1, Disable Satelite: 0, if    |
-|                     | disabled, the Satelite will set all actuators  |
-|                     | to 0                                           |
-+---------------------+------------------------------------------------+
-| cmdInvCrc           | If set to 1, the Satelite will create an       |
-|                     | invalid CRC checksum towards the link master,  |
-|                     | if set to 0 correct CRC checksums will be      |
-|                     | generated.                                     |
-+---------------------+------------------------------------------------+
-| startMark           | Shall be set for the first Satelite datagram   |
-|                     | sent on the link (Satelite address 0), for     |
-|                     | following Satelite datagrams it shall be set   |
-|                     | to 0,                                          |
-|                     |                                                |
-|                     | this mark is set to allow each Satelite to     |
-|                     | understand where in the link-chain they sit    |
-|                     | (their address on the link), this is used for  |
-|                     | the                                            |
-|                     |                                                |
-|                     | CRC evaluation and creation. The Satelite      |
-|                     | closestd to the link master's input (furthers  |
-|                     | away from the link masters ws28xx output) is   |
-|                     | designated address 0.                          |
-+---------------------+------------------------------------------------+
+| Field/Bits            | Description                                    |
+|-----------------------|------------------------------------------------|
+| \[7:0\] SensorVal-PAD | Shall be set to 0                              |
+| \[7:0\] ActVal\[3\]   | **Actuator value**: meaning dependent on ActMode\[3\]      |
+| \[7:0\] ActVal\[2\]   | **Actuator value**: meaning dependent on ActMode\[2\]      |
+| \[7:0\] ActVal\[1\]   | **Actuator value**: meaning dependent on ActMode\[1\]      |
+| \[7:0\] ActVal\[0\]   | **Actuator value**: meaning dependent on ActMode\[0\]      |
+| \[2:0\]ActMode\[3\]   | **Actuator Mode:** <br> **SATMODE_LOW(0)**: logical low, <br> **SATMODE_HIGH(1)**: logical high, <br> **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled by ActVal\[3\](%), <br> **SATMODE_PWM100(3)**: 100 Hz PWM controlled by ActVal\[3\](%), <br> **SATMODE_PULSE(4)**: Single High pulse controlled by ActVal\[3\](ms), <br> **SATMODE_PULSE_INV(5)**: Single Low pulse controlled by ActVal\[3\](ms) |
+| \[2:0\]ActMode\[2\]   | **Actuator Mode:** <br> **SATMODE_LOW(0)**: logical low, <br> **SATMODE_HIGH(1)**: logical high, <br> **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled by ActVal\[2\](%), <br> **SATMODE_PWM100(3)**: 100 Hz PWM controlled by ActVal\[2\](%), <br> **SATMODE_PULSE(4)**: Single High pulse controlled by ActVal\[2\](ms), <br> **SATMODE_PULSE_INV(5)**: Single Low pulse controlled by ActVal\[2\](ms) |
+| \[2:0\]ActMode\[1\]   | **Actuator Mode:** <br> **SATMODE_LOW(0)**: logical low, <br> **SATMODE_HIGH(1)**: logical high, <br> **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled by ActVal\[1\](%), <br> **SATMODE_PWM100(3)**: 100 Hz PWM controlled by ActVal\[1\](%), <br> **SATMODE_PULSE(4)**: Single High pulse controlled by ActVal\[1\](ms), <br> **SATMODE_PULSE_INV(5)**: Single Low pulse controlled by ActVal\[1\](ms) |
+| \[2:0\]ActMode\[0\]   | **Actuator Mode:** <br> **SATMODE_LOW(0)**: logical low, <br> **SATMODE_HIGH(1)**: logical high, <br> **SATMODE_PWM1_25K(2)**: 1.25kHz PWM controlled by ActVal\[0\](%), <br> **SATMODE_PWM100(3)**: 100 Hz PWM controlled by ActVal\[0\](%), <br> **SATMODE_PULSE(4)**: Single High pulse controlled by ActVal\[0\](ms), <br> **SATMODE_PULSE_INV(5)**: Single Low pulse controlled by ActVal\[0\](ms) |
+| cmdcmdWdErr         | Generatew a watchdog error in the feed-back fbWdErr message, this is nonintrusive and will not disable actuators. |
+| cmdEnable           | Enable Satelite: 1, Disable Satelite: 0, if disabled, the Satelite will set all actuators to 0 |
+| cmdInvCrc           | If set to 1, the Satelite will create an invalid CRC checksum towards the link master, if set to 0 correct CRC checksums will be generated. |
+| startMark           | Shall be set for the first Satelite datagram sent on the link (Satelite address 0), for following Satelite datagrams it shall be set to 0. <br> <br> This mark is set to allow each Satelite to understand where in the link-chain they sit (their address on the link), this is used for the CRC evaluation and creation. <br> <br> The Satelite closest to the link master's input (furthers away from the link masters ws28xx output) is designated address 0.|
 | fbReserv-PAD\[2\]   | Shall be set to 0                              |
-+---------------------+------------------------------------------------+
 | fbWdErr-PAD         | Shall be set to 0                              |
-+---------------------+------------------------------------------------+
 | fbRemoteCrcErr-PAD  | Shall be set to 0                              |
-+---------------------+------------------------------------------------+
-| \[3:0\]CRC          | CRC-4 checksum generated over the full         |
-|                     | Satelite datagram sent from the Satelite,      |
-|                     | excluding the CRC-4 checksum it self, the      |
-|                     | CRC-4 checksum polynom is                      |
-|                     | (x\^4+x\^1+x\^0                                |
-|                     | )(+)sateliteAddr\[7:4\](+)sateliteAddr\[3:0\], |
-|                     | the reason to involve the Satelite address in  |
-|                     | the CRC checksum is to ensure                  |
-|                     |                                                |
-|                     | that sensor and actuator data do not originate |
-|                     | from other Satelites than intended in case the |
-|                     | master crashes during its output/scan of the   |
-|                     | link.                                          |
-+---------------------+------------------------------------------------+
+| \[3:0\]CRC          | CRC-4 checksum generated over the full Satelite datagram sent from Satelite link master, excluding the CRC-4 checksum it self. <br> The CRC-4 checksum polynom is (x\^4+x\^1+x\^0)(+)sateliteAddr\[7:4\](+)sateliteAddr\[3:0\].|
+
+
 
 #
 **Link Master in - B:**
 
-+---------------------+------------------------------------------------+
-| Field/Bits          | Description                                    |
-+=====================+================================================+
-| \[7:0\] SensorVal   | Sensor inputs, latched since previous link     |
-|                     | scan                                           |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[3\] | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[2\] | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[1\] | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| \[7:0\] ActVal\[0\] | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Don\'t care                                    |
-| ActMode\[3\]        |                                                |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Don\'t care                                    |
-| ActMode\[2\]        |                                                |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Don\'t care                                    |
-| ActMode\[1\]        |                                                |
-+---------------------+------------------------------------------------+
-| \[2:0\]             | Don\'t care                                    |
-| ActMode\[0\]        |                                                |
-+---------------------+------------------------------------------------+
-| cmdcmdWdErr         | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| cmdEnable           | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| cmdInvCrc           | Don\'t care                                    |
-+---------------------+------------------------------------------------+
-| startMark           | Transparent - Can be checked by the            |
-|                     | link-master, should be set for the first       |
-|                     | pulled Satelite, and 0 for the remaining,      |
-|                     | otherwise a general error is at hand.          |
-+---------------------+------------------------------------------------+
-| fbReserv\[2\]       | Transparent - can be checked by the            |
-|                     | link-master, should be set for the first       |
-|                     | pulled Satelite, and 0 for the remaining,      |
-|                     | otherwise a general error is at hand.          |
-+---------------------+------------------------------------------------+
-| fbWdErr             | Set to 1 in case the Satelite has experienced  |
-|                     | a watchdog timeout, the watchdog timeout       |
-|                     | triggers if the Satelite has not been scanned  |
-|                     |                                                |
-|                     | within 500 ms, actuators are then set to       |
-|                     | low/inactive until the next scan performed by  |
-|                     | the master.                                    |
-+---------------------+------------------------------------------------+
-| fbRemoteCrcErr      | Set to 1 in case the Satelite experienced a    |
-|                     | CRC error on the Satelite datagram sent from   |
-|                     | the master.                                    |
-+---------------------+------------------------------------------------+
-| \[3:0\]CRC          | CRC-4 checksum generated over the full         |
-|                     | Satelite datagram sent from the Satelite,      |
-|                     | excluding the CRC-4 checksum it self, the      |
-|                     | CRC-4 checksum polynom is                      |
-|                     | (x\^4+x\^1+x\^0                                |
-|                     | )(+)sateliteAddr\[7:4\](+)sateliteAddr\[3:0\], |
-|                     | the reason to involve the Satelite address in  |
-|                     | the CRC checksum is to ensure                  |
-|                     |                                                |
-|                     | that sensor and actuator data do not originate |
-|                     | from other Satelites than intended in case the |
-|                     | master crashes during its output/scan of the   |
-|                     | link.                                          |
-+---------------------+------------------------------------------------+
+| Field/Bits          | Description                                     |
+|---------------------|-------------------------------------------------|
+| \[7:0\]SensorVal    | Sensor inputs, latched since previous link scan |
+| \[7:0\]ActVal\[3\]  | Don\'t care                                     |
+| \[7:0\]ActVal\[2\]  | Don\'t care                                     |
+| \[7:0\]ActVal\[1\]  | Don\'t care                                     |
+| \[7:0\]ActVal\[0\]  | Don\'t care                                     |
+| \[2:0\]ActMode\[3\] | Don\'t care                                     |
+| \[2:0\]ActMode\[2\] | Don\'t care                                     |
+| \[2:0\]ActMode\[1\] | Don\'t care                                     |
+| \[2:0\]ActMode\[0\] | Don\'t care                                     |
+| cmdcmdWdErr         | Don\'t care                                     |
+| cmdEnable           | Don\'t care                                     |
+| cmdInvCrc           | Don\'t care                                     |
+| startMark           | Transparent - Can be checked by the link-master, should only be set for the first pulled Satelite (Address 0) |
+| fbReserv\[2\]       | Don\'t care.                                    |
+| fbWdErr             | Set to 1 in case the Satelite has experienced a watchdog timeout |
+| fbRemoteCrcErr      | Set to 1 in case the Satelite experienced a RX CRC error on the Satelite datagram. |
+| \[3:0\]CRC          | CRC-4 checksum generated over the full Satelite datagram sent from the Satelite, excluding the CRC-4 checksum it self. <br> The CRC-4 checksum polynom is (x\^4+x\^1+x\^0)(+)sateliteAddr\[7:4\](+)sateliteAddr\[3:0\].|
 
 #
 ### **FPGA Pinout:**
