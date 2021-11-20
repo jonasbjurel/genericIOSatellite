@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* crc4 implements a CRC-4 checksum calculator.																										*/
 /* Input:																																			*/
-/* masterClk: System clock to which everything is synchronized to																					*/
+/* masterClk: A high frequency master clock to wich the module inputs and outputs are synchronized to, frequency > ~30 MHz							*/
 /* serialClk(synch): serialData input is captured @ posedge of seriaClk																				*/
 /* serialData(Synch): Input data subject for CRC calculation																						*/
 /* reset(Synch): At posedge of reset the CRC calculation is restarted																				*/

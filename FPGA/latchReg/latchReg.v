@@ -1,8 +1,8 @@
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* The latchReg implements a N-bit monostable latch register														                                */
 /* Input:																																			*/
-/* masterClk: System clock to which everything is synchronized to																					*/
-/* latchInput: (Async) Each individual bit is latched at their respective posedge, only to be reset at rest posedge											*/
+/* masterClk: A high frequency master clock to wich the module inputs and outputs are synchronized to, frequency > ~30 MHz							*/
+/* latchInput: (Async) Each individual bit is latched at their respective posedge, only to be reset at rest posedge									*/
 /* reset: Serial (latchOutput is reset at posedge of reset																							*/
 /* Output:																																			*/
 /* latchOutput: Monostable posetive Latched output from latchInput																					*/

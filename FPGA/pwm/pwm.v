@@ -1,9 +1,18 @@
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* pwm is a programable pwm generator, generating pwm pulses from 0 % duty cycle (which does not generate a pulse) to 100% duty cycle				*/
-/* See pulse.v for more information																													*/
+/* pwm is a programable pwm generator, generating pwm pulses from 0 % duty cycle (which generates all 0) to 100% duty cycle (which generates all 1) */
+/* Input:																																			*/
+/* masterClk: A high frequency master clock to wich the module inputs and outputs are synchronized to, frequency > ~30 MHz							*/
+/* controlInput(synch): The PWM duty input(0-255)																									*/
+/* load(Synch): controlInput loads at posetive edge of load																							*/
+/* reset(Synch): At posedge of reset the CRC calculation is restarted																				*/
+/* Output:																																			*/
+/* pwmOut: pwmOut provides the PWM signal																											*/
+/* Module static parameters:																														*/
+/* PRESCALE: defines the PWM cycle time, 1: 1,25 Khz, 100: 125 Hz., etc...																			*/
+/* Comments: -																																		*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-`ifdef TOP
+`ifdef TOP																			// Some vlog tools flatterns the design to one common directory
 	`include "genericIOSateliteEnv.v"
 `else
 	`include "../genericIOSateliteEnv.v"
@@ -16,16 +25,28 @@ module pwm	#(parameter PRESCALE = 1)
 			 output reg pwmOut);
 
 	reg[7:0] control = 8'b0;
-	reg[$clog2(`K1_25_PWM_STEP*PRESCALE)-1:0] cycleCnt = 0;	// cycleCnt is used to create the PWM step 
-	reg[7:0] stepCnt = 8'b0;								// stepCnt counts the pwm steps 0-255 (0-100% duty time)
-	reg prevLoad;
+	reg[$clog2(`K1_25_PWM_STEP*PRESCALE)-1:0] cycleCnt = 0;							// cycleCnt is used to create the PWM step 
+	reg[7:0] stepCnt = 8'b0;														// stepCnt counts the pwm steps 0-255 (0-100% duty time)
 
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+/* Signal edge definitions																															*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+	reg prevLoad;
 	always @(posedge masterClk) begin
 		prevLoad <= load;
-		if(!prevLoad && load) begin							// @ posetive edge of load
-			control <= controlInput;						// Latch the control input data
+	end
+	`define LOAD_POSEDGE (load && !prevLoad)
+	`define LOAD_NEGEDGE (!load && prevLoad)
+/*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+/* PWM generation																																	*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+	always @(posedge masterClk) begin
+		if(`LOAD_POSEDGE) begin
+			control <= controlInput;												// Latch the control input data
 		end
-		else if(stepCnt == 8'hFF) begin						// At the full PWM cycle, start the PWM pulse
+		else if(stepCnt == 8'hFF) begin												// At the full PWM cycle, start the PWM pulse
 			cycleCnt <= 0;									
 			stepCnt <= 0;
 			if(control != 0)
@@ -33,11 +54,11 @@ module pwm	#(parameter PRESCALE = 1)
 			else
 				pwmOut <= 1'b0;
 		end
-		else if(cycleCnt >= `K1_25_PWM_STEP*PRESCALE) begin	// At the end of a pwm step, increase the stepCnt
+		else if(cycleCnt >= `K1_25_PWM_STEP*PRESCALE) begin							// At the end of a pwm step, increase the stepCnt
 			cycleCnt <= 0;
 			stepCnt <= stepCnt + 1'b1;			
 		end
-		else if(stepCnt >= control) begin					// If stepCnt matches the control input, end the pwm pulse
+		else if(stepCnt >= control) begin											// If stepCnt matches the control input, end the pwm pulse
 			pwmOut <= 1'b0;
 			cycleCnt <= cycleCnt + 1'b1;
 		end
