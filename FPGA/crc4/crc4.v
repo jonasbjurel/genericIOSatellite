@@ -1,9 +1,10 @@
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* crc4 implements a CRC-4 checksum calculator.																										*/
 /* Input:																																			*/
+/* masterClk: System clock to which everything is synchronized to																					*/
 /* serialClk(synch): serialData input is captured @ posedge of seriaClk																				*/
 /* serialData(Synch): Input data subject for CRC calculation																						*/
-/* reset(synch): At posedge of reset the CRC calculation is restarted																				*/
+/* reset(Synch): At posedge of reset the CRC calculation is restarted																				*/
 /* enable(SemiAsynch): If enable is set the CRC calculation continues and the crc4 output reflects current results; if unset the calculation is		*/
 /*					   halted and the crc4 register is shifting towards MSB (crc4[3]) @ every posedge of seriaClk									*/
 /* Output:																																			*/
@@ -26,7 +27,7 @@ module crc4 (input serialClk,
 			  output reg[3:0] crc4);
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* Clock edge definitions																															*/
+/* Signal edge definitions																															*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 	reg prevSerialClk;
 	reg prevReset;
@@ -34,11 +35,11 @@ module crc4 (input serialClk,
 		prevSerialClk <= serialClk;
 		prevReset <= reset;
 	end
-	`define SERIALCLK_POSEDGE serialClk && !prevSerialClk
-	`define SERIALCLK_NEGEDGE !prevSerialClk && prevSerialClk
-	`define RESET_POSEDGE reset && !prevReset
-	`define RESET_NEGEDGE !reset && prevreset
-/*-------------------------------------------------------END Clock edge definitions-----------------------------------------------------------------*/
+	`define SERIALCLK_POSEDGE (serialClk && !prevSerialClk)
+	`define SERIALCLK_NEGEDGE (!prevSerialClk && prevSerialClk)
+	`define RESET_POSEDGE (reset && !prevReset)
+	`define RESET_NEGEDGE (!reset && prevreset)
+/*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Calculate CRC-4 checksum																															*/

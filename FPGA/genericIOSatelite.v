@@ -135,6 +135,8 @@ module logictop(input ws2811wireIn,					//Device independent top level
 	reg[3:0] feedback;
 	reg[6:0] rxCnt;
 	reg[6:0] txCnt;
+	reg[7:0] addr;
+	reg firstSatShift;
 	wire[3:0] crcTxCalcRes;
 	wire[3:0] crcRxCalcRes;
 	reg freezeRxCrcCalc;
@@ -142,12 +144,15 @@ module logictop(input ws2811wireIn,					//Device independent top level
 	reg crcRxReset;
 	reg crcTxReset;
 	reg shiftCrcTx;
+	wire[3:0] crcAddrHash;
 	wire serialAct2Sens;
 	reg[($clog2(`WATCHDOG_TIMEOUT_CYC))-1:0] watchdogReg = 0;
 	wire[3:0] preWdActuators;
 	reg cmdInverseCrc;
 	reg cmdEnable;
 	reg cmdWdErr;
+	
+	assign crcAddrHash = addr[7:4]^addr[3:0];					// Used to have a unique CRC algo per address, avoiding wrong addressing
 
 	always @ (posedge masterClk) begin							//Procedure to detect active and serial clk edges
 		prevSerialClk <= serialClk;
@@ -200,7 +205,7 @@ module logictop(input ws2811wireIn,					//Device independent top level
 		end
 	end
 
-
+/* RX Statemachine																										*/
 	always @ (posedge masterClk) begin							// RX CRC validation
 		if(`ACTIVE_POSEDGE) begin								// @ posedge active, start of a new ws2811 transaction
 																// Load rxCnt with full satelite shift register length
@@ -222,8 +227,14 @@ module logictop(input ws2811wireIn,					//Device independent top level
 				rxCnt <= rxCnt - 1'b1;
 			end
 		end
-		if(rxCnt == 7'b0) begin									// Alignment with a full satelite shift register length 
-			if(crcRxCalcRes == crcRxShift)						// Set CRC error depending on received and calculated CRC4 check sum
+		if(rxCnt == 7'b1) begin
+			if (feedback[3])									// Start mark is placed in command[0] but since we need to have the address in next cycle we're evaluating one cycle early, hence feedback[3]
+				addr <= 0;
+			else
+				addr <= addr + 1;
+		end
+		if(rxCnt == 7'b0) begin									// Alignment with a full satelite shift register length
+			if(crcRxCalcRes^crcAddrHash == crcRxShift)			// Set CRC error depending on received and calculated CRC4 check sum
 				crcRxErr <= 1'b0;
 			else
 				crcRxErr <= 1'b1;
@@ -241,14 +252,15 @@ module logictop(input ws2811wireIn,					//Device independent top level
 			txCnt <= `CRC_WD + `FEEDBACK_WD + `RESERVED_WD + `NO_ACTUATORS*`MODE_WD + `NO_ACTUATORS*`ACTUATOR_WD + `SENSOR_WD;
 			crcTxReset <= 1'b1;									// Reset the TX CRC4 registers for a new CRC calculation
 			freezeTxCrcCalc <= 1'b0;							// Enable CRC calculation
-			shiftCrcTx <= 0;									// Disable shift out of CRC4 results
+			shiftCrcTx <= 1'b0;									// Disable shift out of CRC4 results
+			firstSatShift <= 1'b1;
 		end
 		else if(`SERIALCLK_POSEDGE) begin						// @ (posedge serialClk)
 			if(txCnt>`CRC_WD + 1'b1) begin						// All sensors and feedBackReg's have been shifted out, CRC checksum calcs complete, freeze further CRC calc, and shift out the 4 bit CRC check-sum
 				txCnt <= txCnt - 1'b1;
 				crcTxReset <= 1'b0;
 			end
-			else if(txCnt == `CRC_WD + 1'b1) begin				// Start of CRC4 shift out, stop CRC calculation
+			else if(txCnt == `CRC_WD + 1'b1 && firstSatShift) begin // If this is the first satelite shiftout (first 8 bytes) -> Start of CRC4 shift out, stop CRC calculation, we should not re-generate CRC from other satelites earlier in the chain
 				txCnt <= txCnt - 1'b1;
 				freezeTxCrcCalc <= 1'b1;
 				shiftCrcTx <= 1'b1;
@@ -257,8 +269,10 @@ module logictop(input ws2811wireIn,					//Device independent top level
 				txCnt <= txCnt - 1'b1;
 			end
 		end
-		else if(txCnt == 7'b0)
+		else if(txCnt == 7'b0) begin
 			shiftCrcTx <= 1'b0;
+			firstSatShift <= 1'b0;
+		end
 	end
 
 	always @ (posedge masterClk) begin							// Latch commands
@@ -279,7 +293,7 @@ module logictop(input ws2811wireIn,					//Device independent top level
 	actuators actuators_0(.serialDataIn (command[3]), .serialClk (serialClk), .enableShift (active), .masterClk (masterClk), .disableActuators(crcRxErr), .actuator (preWdActuators), .serialDataOut(serialAct2Sens));
 	sensors sensors_0(.serialDataIn (serialAct2Sens), .serialClk (serialClk), .enableShift (active), .sense (sensorInput), .masterClk (masterClk), .serialDataOut (serialDataOut));
 	crc4 crcTxCalc(.serialData(serialDataOut), .serialClk(serialClk), .reset(crcRxReset), .enable(~freezeTxCrcCalc), .masterClk(masterClk), .crc4(crcTxCalcRes));
-	ws2811Encoder ws2811Encoder_0(.dataIn (~shiftCrcTx & serialDataOut | shiftCrcTx & (crcTxCalcRes[3]^cmdInverseCrc)), .dataClk (serialClk), .masterClk (masterClk), .dataOut (ws2811wireOut));
+	ws2811Encoder ws2811Encoder_0(.dataIn ((~shiftCrcTx | ~firstSatShift) & serialDataOut | (shiftCrcTx & firstSatShift) & (crcTxCalcRes[3]^cmdInverseCrc^addr[txCnt[1:0]])), .dataClk (serialClk), .masterClk (masterClk), .dataOut (ws2811wireOut));
 	assign actuators = {preWdActuators[3] & ~wdDisableActuators & cmdEnable, preWdActuators[2] & ~wdDisableActuators & cmdEnable, preWdActuators[1] & ~wdDisableActuators & cmdEnable, preWdActuators[0] & ~wdDisableActuators & cmdEnable};
 endmodule
 
