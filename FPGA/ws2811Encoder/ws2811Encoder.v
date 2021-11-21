@@ -1,13 +1,13 @@
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* The ws2811Encoder module endecodes the data to the ws2811 physical layer, supported speed is 800 kHhz/800 bps	                                */
 /* Input:																																			*/
-/*		masterClk: A high frequency master clock to wich the module inputs and outputs are synchronized to, frequency > ~30 MHz						*/
-/*		dataIn: Unmodulated ws2811 signal, latched @ posedge of masterClk																			*/
-/*		dataClk: clk to latch dataInput, dataInput latched @ posedge of masterClk																	*/
+/* masterClk: A high frequency master clock to wich the module inputs and outputs are synchronized to, frequency > ~30 MHz							*/
+/* dataIn: Unmodulated ws2811 signal, latched @ posedge of masterClk																				*/
+/* dataClk: clk to latch dataInput, dataInput latched @ posedge of masterClk																		*/
 /* output:																																			*/
-/*		dataOut: WS2811 modulated output data																										*/
+/* dataOut: WS2811 modulated output data																											*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
-`ifdef TOP
+`ifdef TOP																			// Some vlog tools flatterns the design to one common directory
 	`include "genericIOSateliteEnv.v"
 `else
 	`include "../genericIOSateliteEnv.v"
@@ -21,9 +21,22 @@ module ws2811Encoder (input		dataIn,
 
 	reg[7:0] cnt;																				// Counter to define pulse widths
 	reg countEn;																				// Enable counting flag
-	reg prevDataClk;
 	reg nextDataOut;
 
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+/* Signal edge definitions																															*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+	reg prevDataClk;
+	always @ (posedge masterClk) begin
+		prevDataClk <= dataClk;
+	end
+	`define DATACLK_POSEDGE (dataClk && !prevDataClk)
+	`define DATACLK_NEGEDGE (!dataClk && prevDataClk)
+/*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+/* Encoder																																			*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 	always @ (posedge masterClk) begin
 		prevDataClk <= dataClk;
 		if (!prevDataClk && dataClk) begin
@@ -48,4 +61,5 @@ module ws2811Encoder (input		dataIn,
 			end
 		end
 	end
+/*---------------------------------------------------------------END Encoder-----------------------------------------------------------------------*/
 endmodule

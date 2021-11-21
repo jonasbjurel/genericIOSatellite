@@ -4,6 +4,8 @@
 /* masterClk: A high frequency master clock to wich the module inputs and outputs are synchronized to, frequency > ~30 MHz							*/
 /* latchInput: (Async) Each individual bit is latched at their respective posedge, only to be reset at rest posedge									*/
 /* reset: Serial (latchOutput is reset at posedge of reset																							*/
+/* Module static parameters:																														*/
+/* WIDTH: defines the width of the latchReg																											*/
 /* Output:																																			*/
 /* latchOutput: Monostable posetive Latched output from latchInput																					*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/

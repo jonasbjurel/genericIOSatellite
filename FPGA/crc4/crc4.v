@@ -11,7 +11,7 @@
 /* reg[3:0] crc4: When enable is set the crc 4 output shows current reminder of the CRC-4 calculation, when enable is unset the CRC-4 calculation	*/
 /*			is disabled and the CRC-4 calculation reminder is now shifting towards MSB (crc4[3]) for every serialClk posedge						*/
 /* Comments:																																		*/
-/*			CRC-4 polynom: (X^4)(+)(X^1)(+)(X^0)																									*/
+/*	CRC-4 polynom: (X^4)(+)(X^1)(+)(X^0)																											*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 `ifdef TOP																			// Some vlog tools flatterns the design to one common directory
 	`include "genericIOSateliteEnv.v"
