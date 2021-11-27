@@ -1,3 +1,20 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* The ws2811Decoder module decodes the ws2811 physical layer and provides resulting data and recovered clock, supported speed is 800 kHhz/800 bps	*/
 /* Input:																																			*/
@@ -26,7 +43,6 @@ module ws2811Decoder (input masterClk,
 
 	reg dataInMeta = 1'b0;															// Meta stable domain for dataIn reclocking
 	reg dataInReclocked = 1'b0;														// Fully reclocked dataIn
-	reg prevDataInReclocked = 1'b0;													// previous dataIn used for edge detection
 	
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Signal edge definitions																															*/
@@ -37,8 +53,8 @@ module ws2811Decoder (input masterClk,
 		prevDataInReclocked <= dataInReclocked;
 	end
 	
-	`define DATAIN_RECLOCKED_POSEDGE (dataInReclocked && !prevDataInReclocked)
-	`define DATAIN_RECLOCKED_NEGEDGE (!dataInReclocked && prevDataInReclocked)
+	`define DECODE_DATAIN_RECLOCKED_POSEDGE (dataInReclocked && !prevDataInReclocked)
+	`define DECODE_DATAIN_RECLOCKED_NEGEDGE (!dataInReclocked && prevDataInReclocked)
 /*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -49,7 +65,7 @@ module ws2811Decoder (input masterClk,
 		dataInReclocked <= dataInMeta;
 		prevDataInReclocked <= dataInReclocked;
 
-		if(`DATAIN_RECLOCKED_POSEDGE) begin											// posedge dataIn
+		if(`DECODE_DATAIN_RECLOCKED_POSEDGE) begin									// posedge dataIn
 			active <= 1;															// activate the session unless not already active
 			cnt1 <= 0;																// Reset cnt1 for future evaluation of pulse length T1H/T0H
 		end
@@ -65,7 +81,7 @@ module ws2811Decoder (input masterClk,
 		else if(active)
 			cnt2 <= cnt2 + 1'b1;
 
-		if(`DATAIN_RECLOCKED_NEGEDGE) begin											// negedge dataIn
+		if(`DECODE_DATAIN_RECLOCKED_NEGEDGE) begin									// negedge dataIn
 			if(cnt1 > `T1HTRES_CYC)													// Check cnt for dataOut high or low and set dataOut accordingly
 				dataOut <= 1;
 			else

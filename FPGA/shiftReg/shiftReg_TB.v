@@ -1,5 +1,24 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* shiftReg is an N-bit wide shift register																		*/
+/* This is the testbench for shiftReg, which implements a n bit shift register with parallel inputs and outputs										*/
+/* See shiftReg.v for more information																												*/
+/* No particular comments - read the print-outs to follow the code...																				*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 `include "../genericIOSateliteEnv.v"
 `include "../genericIOSateliteEnv_TB.v"
@@ -16,25 +35,20 @@ module shiftReg_TB ();
 	wire serialOutput;
 	wire loaded;
 
-
 	reg[31:0] result;
 	reg[31:0] serialGen;
-
 	integer shiftIndex, shiftOutIndex, valIndex;
-
 
 	shiftReg #(.WIDTH(32)) DUT(.parallelInput(parallelInput), .serialInput(serialInput), .clk(clk), .load(load), .enableShift(enableShift), .masterClk(masterClk), .parallelOutput(parallelOutput), .serialOutput(serialOutput), .loaded(loaded));
 	OSCH #(.NOM_FREQ(`OSCH_FREQ)) internal_oscillator_inst (.STDBY(1'b0), .OSC(masterClk), .SEDSTDBY ());
 
 	always @(negedge clk) begin
-
 		for(shiftIndex=31; shiftIndex>0; shiftIndex=shiftIndex-1) begin
 				result[shiftIndex] <= result[shiftIndex-1];
 		end
 		result[0] <= serialOutput;
-
 	end
-	
+
 	initial begin
 		$display("shiftReg: Running simulation for a 32 bit shift reg");
 		$display("ws2811Decoder: Initializing simulation for WS2811Decoder");

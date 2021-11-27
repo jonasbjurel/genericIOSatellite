@@ -34,12 +34,9 @@
 // Common variables
 // -
 
-
-
 /*==============================================================================================================================================*/
 /* Helper functions                                                                                                                             */
 /*==============================================================================================================================================*/
-
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Function: opStateToStr()                                                                                                                     */
 /* Purpose: Provides a clear text return code string from a return code without string termination.                                             */
@@ -340,34 +337,34 @@ satErr_t IRAM_ATTR ws28xx_rmt_rx_translator(const rmt_item32_t* src, uint8_t* de
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Function: crc                                                                                                                                */
 /* Purpose: Calculates the CRC-4 checksum over a given buffer - ommitting the last 4 bits (which includes or will include the CRC check-sum)    */
-/* Parameters: uint8_t* p_crc: Least significant 4 bits holds the resulting CRC-4 check-sum                                                     */
-/*             uint8_t* p_buff: Input buffer                                                                                                    */
-/*             uint16_t p_buffSize: Size of the input buffer                                                                                    */
-/*             bool p_invalidate: If set to true, the CRC checksum is invalidated                                                               */
+/* Parameters: uint8_t* crc_p: Least significant 4 bits holds the resulting CRC-4 check-sum                                                     */
+/*             uint8_t* buff_p: Input buffer                                                                                                    */
+/*             uint16_t buffSize_p: Size of the input buffer                                                                                    */
+/*             bool invalidate_p: If set to true, the CRC checksum is invalidated                                                               */
 /* Return: -                                                                                                                                    */
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
-void crc(uint8_t* p_crc, uint8_t* p_buff, uint16_t p_buffSize, bool p_invalidate) {
+void crc(uint8_t* crc_p, uint8_t* buff_p, uint16_t buffSize_p, uint8_t satNo_p, bool invalidate_p) {
 	uint8_t crc;
 	crc = 0x00;
-	for (unsigned int buffIndex = 0; buffIndex < p_buffSize; buffIndex++) {
+	for (unsigned int buffIndex = 0; buffIndex < buffSize_p; buffIndex++) {
 		for (unsigned int bitIndex = 8; bitIndex > 0; bitIndex--) {
 			//itob(crc, crcStr);
 			//Serial.print(crcStr);
 			//Serial.print(" ");
-			if (buffIndex != p_buffSize - 1 || bitIndex - 1 > 3) {
+			if (buffIndex != buffSize_p - 1 || bitIndex - 1 > 3) {
 				crc = crc << 1;
-				if (p_buff[buffIndex] & (1 << (bitIndex - 1)))
+				if (buff_p[buffIndex] & (1 << (bitIndex - 1)))
 					crc = crc ^ 0b00010000;
 				if (crc & 0b00010000)
 					crc = crc ^ 0b00000011;
 			}
 		}
 	}
-	*p_crc = *p_crc & 0xF0;
-	if (p_invalidate)
-		*p_crc = *p_crc | (~crc & 0x0F);
+	*crc_p = *crc_p & 0xF0;
+	if (invalidate_p)
+		*crc_p = *crc_p | (~crc^((satNo & 0x0F)^((satNo_p>>4)& 0x0F)) & 0x0F);
 	else
-		*p_crc = *p_crc | (crc & 0x0F);
+		*crc_p = *crc_p | (crc ^ ((satNo & 0x0F) ^ ((satNo_p >> 4) & 0x0F)) & 0x0F);
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -877,8 +874,8 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 					satLinkInfo->txSatStruct[i].cmdEnable = 0x00;
 
 				populateSatLinkBuff(&satLinkInfo->txSatStruct[i], &satLinkInfo->txSatBuff[i * 8]); // Poulate the linkbuffer with ne satelite TX data
-				crc(&satLinkInfo->txSatBuff[i * 8 + SATBUF_CRC_BYTE_OFFSET], &satLinkInfo->txSatBuff[i * 8], // ad calculate the CRC checksum
-					8, (satLinkInfo->txSatStruct[i].invServerCrc == 0x01));
+				crc(&satLinkInfo->txSatBuff[i * 8 + SATBUF_CRC_BYTE_OFFSET], &satLinkInfo->txSatBuff[i * 8], // and calculate the CRC checksum
+					8, i, (satLinkInfo->txSatStruct[i].invServerCrc == 0x01));
 				satLinkInfo->txSatStruct[i].dirty = false;
 			}
 			//Serial.printf("Transmitbuffer for Satelite %d : ", i);
@@ -931,7 +928,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			bool wdErr;
 
 			senseChange = populateSatWireStruct(&satLinkInfo->rxSatStruct[i], &satLinkInfo->rxSatBuff[i * 8]); // Populate the Satelite rx struct
-			crc(&crcCalc, &satLinkInfo->rxSatBuff[i * 8], 8, false);  // Check iff correct incomming RX buffer CRC
+			crc(&crcCalc, &satLinkInfo->rxSatBuff[i * 8], 8, i, false);  // Check iff correct incomming RX buffer CRC
 			rxCrcErr = (crcCalc != satLinkInfo->rxSatStruct[i].crc);
 			remoteCrcErr = (satLinkInfo->rxSatStruct[i].fbRemoteCrcErr == 0x01); // Check remote CRC indication
 			wdErr = (satLinkInfo->rxSatStruct[i].fbWdErr == 0x01);  // Check Watchdog errors

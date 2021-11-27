@@ -1,3 +1,21 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
+
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* crc4 implements a CRC-4 checksum calculator.																										*/
 /* Input:																																			*/
@@ -35,19 +53,19 @@ module crc4 (input serialClk,
 		prevSerialClk <= serialClk;
 		prevReset <= reset;
 	end
-	`define SERIALCLK_POSEDGE (serialClk && !prevSerialClk)
-	`define SERIALCLK_NEGEDGE (!prevSerialClk && prevSerialClk)
-	`define RESET_POSEDGE (reset && !prevReset)
-	`define RESET_NEGEDGE (!reset && prevreset)
+	`define CRC_SERIALCLK_POSEDGE (serialClk && !prevSerialClk)
+	`define CRC_SERIALCLK_NEGEDGE (!prevSerialClk && prevSerialClk)
+	`define CRC_RESET_POSEDGE (reset && !prevReset)
+	`define CRC_RESET_NEGEDGE (!reset && prevreset)
 /*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Calculate CRC-4 checksum																															*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 	always @ (posedge masterClk) begin
-		if(`RESET_POSEDGE)
+		if(`CRC_RESET_POSEDGE)
 			crc4 <= 4'b0000;
-		else if(`SERIALCLK_POSEDGE) begin
+		else if(`CRC_SERIALCLK_POSEDGE) begin
 			if(enable) begin														// If enble - calculate checksum
 				crc4[0] <= serialData + crc4[3];
 				crc4[1] <= serialData + crc4[3] + crc4[0];

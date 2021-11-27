@@ -2,7 +2,5 @@
 1) (SW + FPGA) Improved robustness with per Satelite unique CRC algorithm to protect against wrong latching: Eg. CRC^ADDRESS[7:4]^ADDRESS[3:0], with "startMark" Identifying Address 0 - last in the chain (first sent out)
 2) Improve naming of class methods - avoid to have class name references in the naming
 3) Improve buffer size checking in helper function for pm report formatting
-4) Comment the code - both library and FPGA
-5) Make function parameters const where they should be
-6) Make a FPGA build option for LVDS or 3.3V CMOS, create twi jdec files
-7) Finish the PCB design
+4) Make function parameters const where they should be
+5) Finish the PCB design

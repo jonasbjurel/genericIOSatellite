@@ -1,3 +1,20 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* pulse implements a 0-255 ms pulse generator																		                                */
 /* Input:																																			*/
@@ -34,15 +51,15 @@ module pulse (input wire[7:0] pulseLength,
 	always @ (posedge masterClk) begin
 		prevTrigger <= trigger;
 	end
-	`define TRIGGER_POSEDGE (trigger && !prevTrigger)
-	`define TRIGGER_NEGEDGE (!trigger && prevTrigger)
+	`define PULSE_TRIGGER_POSEDGE (trigger && !prevTrigger)
+	`define PULSE_TRIGGER_NEGEDGE (!trigger && prevTrigger)
 /*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Generate pulse																																	*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 	always @ (posedge masterClk) begin
-		if(`TRIGGER_POSEDGE && !active && pulseLength!=8'h00) begin					// Initiata a new pulse @ posedge of trigger providing that no previous pulse is running and only if the pulseLengt > 0
+		if(`PULSE_TRIGGER_POSEDGE && !active && pulseLength!=8'h00) begin			// Initiata a new pulse @ posedge of trigger providing that no previous pulse is running and only if the pulseLengt > 0
 			pulse <= 1'b1;															// Set pulse active
 			pulseInv <= 1'b0;														// Set pulseInv inactive
 			cnt1k <= 0;																// ms Cnt reset.

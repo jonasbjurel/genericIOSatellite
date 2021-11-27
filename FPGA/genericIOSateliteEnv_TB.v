@@ -1,12 +1,38 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+/* This file contains various test-bench Macros and procedures for the genercIOSatellite module(s) simulation										*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
 `timescale 1ns/10ps
 `define MAX_SKEW	75														//Alowed Data skew [ns]
 
 `define FEEDBACK_PAD	4'b0
-`define RESERVED_PAD	4'b0
+`define CMD_PAD	4'b0
 `define SENSOR_PAD		8'b0
+`define CMD_WDERR		4'b1000
+`define CMD_ENABLE		4'b0100
+`define CMD_INV_CRC		4'b0010
+`define CMD_START_MARK	4'b0001
 
 `define NO_OF_SATELITES			3
-`define SAT_BIT_TRAIN_LEN		(`CRC_WD + `FEEDBACK_WD + `RESERVED_WD + `NO_ACTUATORS*`MODE_WD + `NO_ACTUATORS*`ACTUATOR_WD + `SENSOR_WD)
+`define SAT_BIT_TRAIN_LEN		(`CRC_WD + `FEEDBACK_WD + `COMMAND_WD + `NO_ACTUATORS*`MODE_WD + `NO_ACTUATORS*`ACTUATOR_WD + `SENSOR_WD)
 `define TOT_BIT_TRAIN_LEN		`NO_OF_SATELITES*`SAT_BIT_TRAIN_LEN
 
 `define MODE_LOW		3'h0
@@ -16,17 +42,14 @@
 `define MODE_PULSE		3'h4
 `define MODE_PULSE_INV	3'h5
 
-
-
 `define DONT_RESET		0
 `define DO_RESET		1
 `define CRC_OK			0
 `define CRC_BAD			1
 
-
-`define WS2811_SEND(BUFF, SIZE, ITTER, RESET, CRC_MODE) \
+`define WS2811_SEND(BUFF, SIZE, ITTER, RESET, CRC_MODE, SATNO) \
 	$display("Send buffer: %b (0x%h)", BUFF, BUFF); \
-	$write("genericIOSatelite_TB: INFO: Injecting ws2811 bitstream: "); \
+	$write("genericIOSatelite_TB: INFO: Injecting ws2811 bitstream for satellite %d: ", SATNO); \
 	resetRxCrc4 = 1; \
 	#10; \
 	resetRxCrc4 = 0; \
@@ -41,15 +64,20 @@
 		#(`K800_NS/2); \
 	end \
 	$write(" (0x%h)", BUFF); \
-	$write(" + CRC4: %b (0x%h)", rxCrc4, rxCrc4); \
-	if(CRC_MODE != `CRC_OK) \
-		$write(" , generating bad CRC4: %b (0x%h)", ~rxCrc4, ~rxCrc4); \
+	if(CRC_MODE == `CRC_OK) begin \
+		$write(" (+ CRC4: %b (0x%h))", rxCrc4, rxCrc4); \
+		$write(" + CRC4^ADDRESS_HASH: %b (0x%h)", rxCrc4^SATNO[7:4]^SATNO[3:0], rxCrc4^SATNO[7:4]^SATNO[3:0]); \
+	end \
+	else begin \
+		$write(" , generating bad CRC: (+ CRC4 %b (0x%h))", ~rxCrc4, ~rxCrc4); \
+		$write(" + CRC4^ADDRESS_HASH: + CRC4 %b (0x%h)", ~(rxCrc4^SATNO[7:4]^SATNO[3:0]), ~(rxCrc4^SATNO[7:4]^SATNO[3:0])); \
+	end \
 	disableRxCrc4Calc = 1; \
 	for(ITTER=4; ITTER > 0; ITTER=ITTER-1) begin \
 		if(CRC_MODE == `CRC_OK) \
-			ws2811SimGenData = rxCrc4[3]; \
+			ws2811SimGenData = rxCrc4[3]^SATNO[3+ITTER]^SATNO[ITTER-1]; \
 		else \
-			ws2811SimGenData = ~rxCrc4[3]; \
+			ws2811SimGenData = ~(rxCrc4[3]^SATNO[3+ITTER]^SATNO[ITTER-1]); \
 		ws2811SimGenClk = 0; \
 		#(`K800_NS/2); \
 		ws2811SimGenClk = 1; \
@@ -59,32 +87,44 @@
 	if(RESET == `DO_RESET) \
 		#(`RESET_NS+100); \
 	else \
-		#(`RESET_NS-10000); 
+		#(`RESET_NS-10000);
 
 // Last else is pure testcode
+// for(ITTER2=(ITTER1+1)*`SAT_BIT_TRAIN_LEN-1; ITTER2>ITTER1*`SAT_BIT_TRAIN_LEN+`CRC_WD-1; ITTER2=ITTER2-1) begin \
 
 `define CHK_TX_CRC_ERR(ITTER1, ITTER2, CRC_REG, ERR) \
 	ERR=1'b0; \
 	for(ITTER1=0; ITTER1<`NO_OF_SATELITES; ITTER1=ITTER1+1) begin \
 		CRC_REG = 5'b0; \
-		for(ITTER2=(ITTER1+1)*`SAT_BIT_TRAIN_LEN-1; ITTER2>ITTER1*`SAT_BIT_TRAIN_LEN+`CRC_WD-1; ITTER2=ITTER2-1) begin \
+		$write("Received data from satelite %d: ", ITTER1); \
+		for (ITTER2=(`NO_OF_SATELITES-ITTER1)*(`SAT_BIT_TRAIN_LEN); ITTER2>(`NO_OF_SATELITES-ITTER1)*(`SAT_BIT_TRAIN_LEN)-(`SAT_BIT_TRAIN_LEN)+`CRC_WD; ITTER2=ITTER2-1) begin \
+			$write("%b", outCheckReg[ITTER2-1]); \
 			CRC_REG[4] = CRC_REG[3]; \
 			CRC_REG[3] = CRC_REG[2]; \
 			CRC_REG[2] = CRC_REG[1]; \
-			CRC_REG[1] = CRC_REG[4]+CRC_REG[0]+outCheckReg[ITTER2]; \
-			CRC_REG[0] = CRC_REG[4]+outCheckReg[ITTER2]; \
+			CRC_REG[1] = CRC_REG[4]+CRC_REG[0]+outCheckReg[ITTER2-1]; \
+			CRC_REG[0] = CRC_REG[4]+outCheckReg[ITTER2-1]; \
 		end \
-		if(CRC_REG[3:0] != outCheckReg[ITTER2 -:4]) \
+		$write("%b%b%b%b", outCheckReg[ITTER2-1], outCheckReg[ITTER2-2], outCheckReg[ITTER2-3], outCheckReg[ITTER2-4]); \
+		$display(" Calculated CRC %h, Calculated CRC^ADDRESS_HASH %h, Received CRC^ADDRESS_HASH %h", CRC_REG[3:0], CRC_REG[3:0]^ITTER1[3:0]^ITTER1[7:4], outCheckReg[ITTER2-1 -:4]); \
+		if((CRC_REG[3:0]^ITTER1[3:0]^ITTER1[7:4]) != outCheckReg[ITTER2-1 -:4]) begin \
 			ERR=ERR|1; \
-	end 
+			$display("INFO: CRC ERROR detected for Satellite %d: %h(CALC) != %h(RECEIVE)",ITTER1, CRC_REG[3:0]^ITTER1[3:0]^ITTER1[7:4], outCheckReg[ITTER2-1 -:4]); \
+		end \
+	end
 	
 
 `define GEN_TX_CRC_ERR(ITTER1, ITTER2, CRC_REG, ERR) \
 	outCheckReg[$urandom%`SAT_BIT_TRAIN_LEN] = outCheckReg[$urandom%`SAT_BIT_TRAIN_LEN]+1;
 
-
+//FISHY THINGS HAPPENING HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 `define REMOTE_CRC_ERR(SATELITE) \
-	outCheckReg[SATELITE*(`SAT_BIT_TRAIN_LEN) + `CRC_WD + `FEEDBACK_WD-1 -:`FEEDBACK_WD] & `FEEDBACK_REMOTECRCERR
+	outCheckReg[SATELITE*(`SAT_BIT_TRAIN_LEN) + `CRC_WD + `FEEDBACK_WD-1 -:`FEEDBACK_WD] & (4'b0001 << `FEEDBACK_REMOTECRCERR)
+//	outCheckReg[SATELITE*(`SAT_BIT_TRAIN_LEN) + `CRC_WD + `FEEDBACK_WD-1 -:`FEEDBACK_WD] & `FEEDBACK_REMOTECRCERR
+
+`define WD_ERR(SATELITE) \
+	outCheckReg[SATELITE*(`SAT_BIT_TRAIN_LEN) + `CRC_WD + `FEEDBACK_WD-1 -:`FEEDBACK_WD] & (4'b0001 << `FEEDBACK_WDERR)
+//	outCheckReg[SATELITE*(`SAT_BIT_TRAIN_LEN) + `CRC_WD + `FEEDBACK_WD-1 -:`FEEDBACK_WD] & `FEEDBACK_REMOTECRCERR
 
 `define CHECK_SENSORS(VALUE, ITTER) \
 	for(ITTER=0; ITTER<`NO_OF_SATELITES; ITTER=ITTER+1) begin \
@@ -155,18 +195,7 @@
 `define LOAD_SERIAL_GEN_32(MODULE, REG, VALUE3, VALUE2, VALUE1, VALUE0) \
 	`SET_WIRE_32(MODULE, REG, VALUE3, VALUE2, VALUE1, VALUE0)
 
-/*`define SHIFT_SERIAL_GEN_32(MODULE, REG, WIRE, ITTER, CLK, CYC_NS) \
-	CLK = 0; \
-	#(CYC_NS/2); \
-	for (ITTER=32; ITTER>0; ITTER=ITTER-1) begin \
-		WIRE = REG[ITTER-1]; \
-		CLK = 1; \
-		#(CYC_NS/2); \
-		CLK = 0; \
-		#(CYC_NS/2); \
-	end*/
-
-	`define SHIFT_SERIAL_GEN_32(MODULE, REG, WIRE, ITTER, CLK, CYC_NS) \
+`define SHIFT_SERIAL_GEN_32(MODULE, REG, WIRE, ITTER, CLK, CYC_NS) \
 	for (ITTER=32; ITTER>0; ITTER=ITTER-1) begin \
 		CLK = 0; \
 		#(CYC_NS/2); \
@@ -192,10 +221,6 @@
 
 	`define TRIGGER_EDGE_POS					0
 	`define TRIGGER_EDGE_NEG					1
-
-
-
-
 
 	module PROBE(input wire[7:0] type_p, input wire pin, input wire triggerEdge_p, input wire[63:0] timeout_p, input wire arm, input wire masterClk, output reg[7:0] state = `PROBE_READY, output reg[7:0] errCause = `ERR_CAUSE_NONE, output reg[63:0] pulseTime = 0, output reg[63:0] timeToTrigger = 0, output reg[63:0] cycleTime = 0);	
 		reg triggerEdge, prevArm, prevPin;

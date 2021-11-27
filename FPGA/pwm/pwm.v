@@ -1,3 +1,20 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* pwm is a programable pwm generator, generating pwm pulses from 0 % duty cycle (which generates all 0) to 100% duty cycle (which generates all 1) */
 /* Input:																																			*/
@@ -35,15 +52,15 @@ module pwm	#(parameter PRESCALE = 1)
 	always @(posedge masterClk) begin
 		prevLoad <= load;
 	end
-	`define LOAD_POSEDGE (load && !prevLoad)
-	`define LOAD_NEGEDGE (!load && prevLoad)
+	`define PWM_LOAD_POSEDGE (load && !prevLoad)
+	`define PWM_LOAD_NEGEDGE (!load && prevLoad)
 /*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* PWM generation																																	*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 	always @(posedge masterClk) begin
-		if(`LOAD_POSEDGE) begin
+		if(`PWM_LOAD_POSEDGE) begin
 			control <= controlInput;												// Latch the control input data
 		end
 		else if(stepCnt == 8'hFF) begin												// At the full PWM cycle, start the PWM pulse

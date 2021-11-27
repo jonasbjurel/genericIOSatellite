@@ -1,6 +1,24 @@
-/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* The ws2811Decoder_TB module decodes is a test bench for the ws2811Decoder																		*/
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
+/*--------------------------------------------------------------------------------------------------------------------------------------------------*/
+/* The ws2811Decoder_ module decodes is a test bench for the ws2811Decoder																			*/
+/* No particular comments - read the print-outs to follow the code...																				*/
+/* See ws2811Decoder.v for more information																											*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 `include "../genericIOSateliteEnv.v"
 `include "../genericIOSateliteEnv_TB.v"

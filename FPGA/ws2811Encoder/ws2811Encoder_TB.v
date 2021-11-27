@@ -1,6 +1,24 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* The ws2811Encoder_TB module encodes is a test bench for the ws2811Encoder																		*/
-
+/* No particular comments - read the print-outs to follow the code...																				*/
+/* See ws2811Encoder.v for more information																											*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 `include "../genericIOSateliteEnv.v"
 `include "../genericIOSateliteEnv_TB.v"
@@ -12,10 +30,10 @@
 // Checks the 4-byte result
 `define CHECK_RES(VALUE3, VALUE2, VALUE1, VALUE0) \
 	if (result_3 === VALUE3 & result_2 === VALUE2 & result_1 === VALUE1 & result_0 === VALUE0) \
-		$display("ws2811Decoder: PASS: results were as expected, %b %b %b %b was expected, and %b %b %b %b was detected", VALUE3, VALUE2, VALUE1, VALUE0, result_3, result_2, result_1, result_0); \
+		$display("ws2811Encoder: PASS: results were as expected, %b %b %b %b was expected, and %b %b %b %b was detected", VALUE3, VALUE2, VALUE1, VALUE0, result_3, result_2, result_1, result_0); \
 	else begin \
-		$display("ws2811Decoder: ERROR: results were not as expected, %b %b %b %b was expected, but %b %b %b %b was detected", VALUE3, VALUE2, VALUE1, VALUE0, result_3, result_2, result_1, result_0); \
-		$display("ws2811Decoder: Stopping further simulation..."); \
+		$display("ws2811Encoder: ERROR: results were not as expected, %b %b %b %b was expected, but %b %b %b %b was detected", VALUE3, VALUE2, VALUE1, VALUE0, result_3, result_2, result_1, result_0); \
+		$display("ws2811Encoder: Stopping further simulation..."); \
 		$stop; \
 	end
 
@@ -60,9 +78,9 @@ module ws2811Encoder_TB ();
 	end
 	
 	initial begin
-		$display("ws2811Decoder: Initializing simulation for WS2811Decoder");
+		$display("ws2811Encoder: Initializing simulation for ws2811Encoder");
 
-		$display("ws2811Decoder: Running simulation for nominal dataIn timing, T1H: %d, T1L %d, T0H: %d, T0L", 600, 1240-600, 250, 1240-250); //MAKE PARAMETERS IN THE ENV FILE
+		$display("ws2811Encoder: Running simulation for nominal dataIn timing, T1H: %d, T1L %d, T0H: %d, T0L", 600, 1240-600, 250, 1240-250); //MAKE PARAMETERS IN THE ENV FILE
 		`WS2811_GENERATE(ws2811In, 8'hF0, 0)						//Init Garbage vector
 		`WS2811_GENERATE_END(ws2811In)
 
@@ -78,7 +96,7 @@ module ws2811Encoder_TB ();
 		`CHECK_ACTIVE(active, 1'b0)
 		`CHECK_RES(8'h55, 8'hAA, 8'h00, 8'hFF)
 
-		$display("ws2811Decoder: Running simulation for maximum positive dataIn skew timing: + %d ns", `MAX_SKEW);
+		$display("ws2811Encoder: Running simulation for maximum positive dataIn skew timing: + %d ns", `MAX_SKEW);
 		`WS2811_GENERATE(ws2811In, 8'h55, `MAX_SKEW)
 		`CHECK_ACTIVE(active, 1'b1)
 		`WS2811_GENERATE(ws2811In, 8'hAA, `MAX_SKEW)
@@ -91,7 +109,7 @@ module ws2811Encoder_TB ();
 		`CHECK_ACTIVE(active, 1'b0)
 		`CHECK_RES(8'h55, 8'hAA, 8'h00, 8'hFF)
 		
-		$display("ws2811Decoder: Running simulation for maximum negative dataIn skew timing: - %d ns", `MAX_SKEW);
+		$display("ws2811Encoder: Running simulation for maximum negative dataIn skew timing: - %d ns", `MAX_SKEW);
 		`WS2811_GENERATE(ws2811In, 8'h55, -`MAX_SKEW)
 		`CHECK_ACTIVE(active, 1'b1)
 		`WS2811_GENERATE(ws2811In, 8'hAA, -`MAX_SKEW)
@@ -107,7 +125,7 @@ module ws2811Encoder_TB ();
 		`CHECK_ACTIVE(active, 1'b0)
 		`CHECK_RES(8'h55, 8'hAA, 8'h00, 8'hFF)
 
-		$display("ws2811Decoder: Simulation successfull - stopping");
+		$display("ws2811Encoder: Simulation successfull - stopping");
 		$stop;
 	end
 endmodule

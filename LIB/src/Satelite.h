@@ -356,7 +356,7 @@ satErr_t IRAM_ATTR ws28xx_rmt_rx_translator(const rmt_item32_t* src, uint8_t* de
 /*             bool p_invalidate: If set to true, the CRC checksum is invalidated                                                               */
 /* Return: -                                                                                                                                    */
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
-void crc(uint8_t* p_crc, uint8_t* p_buff, uint16_t p_buffSize, bool p_invalidate);
+void crc(uint8_t* crc_p, uint8_t* buff_p, uint16_t buffSize_p, uint8_t satNo_p, bool invalidate_p);
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
 /* Function: returnCode                                                                                                                         */

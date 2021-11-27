@@ -1,3 +1,20 @@
+/*==============================================================================================================================================*/
+/* License                                                                                                                                      */
+/*==============================================================================================================================================*/
+// Copyright (c)2021 Jonas Bjurel (jonasbjurel@hotmail.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law and agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*================================================================ END License =================================================================*/
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* The ws2811Encoder module endecodes the data to the ws2811 physical layer, supported speed is 800 kHhz/800 bps	                                */
 /* Input:																																			*/
@@ -30,8 +47,8 @@ module ws2811Encoder (input		dataIn,
 	always @ (posedge masterClk) begin
 		prevDataClk <= dataClk;
 	end
-	`define DATACLK_POSEDGE (dataClk && !prevDataClk)
-	`define DATACLK_NEGEDGE (!dataClk && prevDataClk)
+	`define ENCODE_DATACLK_POSEDGE (dataClk && !prevDataClk)
+	`define ENCODE_DATACLK_NEGEDGE (!dataClk && prevDataClk)
 /*-------------------------------------------------------END Signal edge definitions---------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -39,7 +56,7 @@ module ws2811Encoder (input		dataIn,
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 	always @ (posedge masterClk) begin
 		prevDataClk <= dataClk;
-		if (!prevDataClk && dataClk) begin
+		if (`ENCODE_DATACLK_POSEDGE) begin
 			nextDataOut <= dataIn;
 			dataOut <= 1;
 			cnt <= 0;

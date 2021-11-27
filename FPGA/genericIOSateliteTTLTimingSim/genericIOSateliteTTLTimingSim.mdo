@@ -1,0 +1,18 @@
+if {![file exists "$env(SATELLITE_PATH)/genericIOSateliteTTLTimingSim/genericIOSateliteTTLTimingSim.mpf"]} {
+	project new "$env(SATELLITE_PATH)/genericIOSateliteTTLTimingSim" genericIOSateliteTTLTimingSim
+	project addfile "$env(SATELLITE_PATH)/implTTL/genericIOSatelite_implTTL_vo.vo"
+	project addfile "$env(SATELLITE_PATH)/genericIOSatelite_TB.v"
+	vlib  work
+	vdel -lib work -all 
+	vlib work
+	vlog  +incdir+$env(SATELLITE_PATH)/implTTL  -work work  "$env(SATELLITE_PATH)/implTTL/genericIOSatelite_implTTL_vo.vo"
+	vlog  +incdir+$env(SATELLITE_PATH)  -work work  "$env(SATELLITE_PATH)/genericIOSatelite_TB.v"
+} else {
+	project open "genericIOSateliteTTLTimingSim/genericIOSateliteTTLTimingSim"
+	project compileall
+}
+vsim -sdfnoerror -sdfnowarn -L work -L pmi_work -L ovi_machxo2  +transport_path_delays +transport_int_delays genericIOSatelite_TB -sdfmax /genericIOSatelite_TB/DUT0=$env(SATELLITE_PATH)/implTTL/genericIOSatelite_implTTL_vo.sdf -sdfmax /genericIOSatelite_TB/DUT1=$env(SATELLITE_PATH)/implTTL/genericIOSatelite_implTTL_vo.sdf -sdfmax /genericIOSatelite_TB/DUT2=$env(SATELLITE_PATH)/implTTL/genericIOSatelite_implTTL_vo.sdf
+view wave
+do ../genericIOSateliteWave
+run -all
+simstats
