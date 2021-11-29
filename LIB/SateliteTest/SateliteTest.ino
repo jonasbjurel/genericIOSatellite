@@ -1,4 +1,4 @@
-/*==============================================================================================================================================*/
+ /*==============================================================================================================================================*/
 /* License                                                                                                                                      */
 /*==============================================================================================================================================*/
 // Copyright (c)2021 Jonas Bjurel (jonas.bjurel@hotmail.com)
@@ -238,15 +238,19 @@ void loop() {
       assert(rc == 0);
     }
   }
-/*
+
   if(loopcnt == 450){
-    Serial.printf("Re-enabling satelite Link\n");
-    rc = satLink->enableSatLink();
-    if(rc){
-      Serial.printf("Failed to enable link, return code %x\n", rc);
-      assert(rc == 0);
+    Serial.printf("Starting a self-test\n");
+    for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
+      if (!drain[i] && satelites[i] != NULL){
+        rc = satelites[i]->satSelfTest(&selfTestRes );
+        if(rc){
+          Serial.printf("Failed to start self-test\n");
+          assert(rc == 0);
+        }
+      }
     }
-  }*/
+  }
     
   for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
     if (!drain[i] && satelites[i] != NULL){

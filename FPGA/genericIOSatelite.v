@@ -180,8 +180,6 @@ module logictop(input ws2811wireIn,
 /* ==== Feedback State machine ==== +++ CAN WE SWPARATE OUT +++*/
 	always @ (posedge masterClk) begin								// Populating the feedback register to be delivered to the satelite link master
 		if (`ACTIVE_POSEDGE) begin
-			// TEST CODE TO FIND OUT THE ADDRESS
-			command[3:1] <= addr[2:0];
 			if(crcRxErr)											// Latch in any remote CRC error from RX CRC evaluation into feedback
 				feedback[`FEEDBACK_REMOTECRCERR] <= 1'b1;
 			else

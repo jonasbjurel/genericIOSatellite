@@ -45,33 +45,33 @@ class satelite;
 /*==============================================================================================================================================*/
 /* Library constants                                                                                                                            */
 /*==============================================================================================================================================*/
-#define CPUFREQ                     80000000
-#define WS28XX_T0H_NS               250 //400
-#define WS28XX_T1H_NS               600 //800
-#define WS28XX_CYC_NS               1250
-#define WS28XX_GUARD_NS             10000
+#define CPUFREQ						80000000
+#define WS28XX_T0H_NS				250
+#define WS28XX_T1H_NS				600
+#define WS28XX_CYC_NS				1250
+#define WS28XX_GUARD_NS				10000
 
-#define WS28XX_T0H_CYC              20              //WS28XX_T0H_NS*CPUFREQ/1000000000
-#define WS28XX_T0H_CYC_MIN          18              //WS28XX_T0H_CYC * 0.9
-#define WS28XX_T0H_CYC_MAX          22              //WS28XX_T0H_CYC * 1.1
-#define WS28XX_T0L_CYC              (WS28XX_CYC_CYC - WS28XX_T0H_CYC)
-#define WS28XX_T1H_CYC              48              //WS28XX_T1H_NS*CPUFREQ/1000000000
-#define WS28XX_T1H_CYC_MIN          43              //WS28XX_T1H_CYC * .9
-#define WS28XX_T1H_CYC_MAX          53              //WS28XX_T1H_CYC * 1.1
-#define WS28XX_T1L_CYC              (WS28XX_CYC_CYC - WS28XX_T1H_CYC)
-#define WS28XX_CYC_CYC              100             //WS28XX_CYC_NS*CPUFREQ/1000000000
-#define WS28XX_CYC_CYC_MIN          90              //WS28XX_CYC_CYC*0.9
-#define WS28XX_CYC_CYC_MAX          110             //WS28XX_CYC_CYC*1.1
-#define WS28XX_GUARD_CYC            800             //WS28XX_GUARD_NS*CPUFREQ/1000000000
+#define WS28XX_T0H_CYC				20							//WS28XX_T0H_NS*CPUFREQ/1000000000
+#define WS28XX_T0H_CYC_MIN			18							//WS28XX_T0H_CYC * 0.9
+#define WS28XX_T0H_CYC_MAX			22							//WS28XX_T0H_CYC * 1.1
+#define WS28XX_T0L_CYC				(WS28XX_CYC_CYC - WS28XX_T0H_CYC)
+#define WS28XX_T1H_CYC				48							//WS28XX_T1H_NS*CPUFREQ/1000000000
+#define WS28XX_T1H_CYC_MIN			43							//WS28XX_T1H_CYC * .9
+#define WS28XX_T1H_CYC_MAX			53							//WS28XX_T1H_CYC * 1.1
+#define WS28XX_T1L_CYC				(WS28XX_CYC_CYC - WS28XX_T1H_CYC)
+#define WS28XX_CYC_CYC				100							//WS28XX_CYC_NS*CPUFREQ/1000000000
+#define WS28XX_CYC_CYC_MIN			90							//WS28XX_CYC_CYC*0.9
+#define WS28XX_CYC_CYC_MAX			110							//WS28XX_CYC_CYC*1.1
+#define WS28XX_GUARD_CYC			800							//WS28XX_GUARD_NS*CPUFREQ/1000000000
 
-#define ONE_SEC_US                  1000000
+#define ONE_SEC_US					1000000
 
-#define SATBUF_CRC_BYTE_OFFSET      7
+#define SATBUF_CRC_BYTE_OFFSET		7
 
-#define NO_OF_ACT                   4
-#define NO_OF_SENS                  8
+#define NO_OF_ACT					4
+#define NO_OF_SENS					8
 
-#define T_REESTABLISH_LINK_MS       20000
+#define T_REESTABLISH_LINK_MS		20000
 /*============================================================= END Library constants ==========================================================*/
 
 /*==============================================================================================================================================*/
