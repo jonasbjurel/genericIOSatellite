@@ -492,6 +492,7 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 	UBaseType_t pollTaskCore_p, uint8_t scanInterval_p) {
 	satLinkInfo = new satLinkInfo_t;
 	satLinkInfo->performanceCounterLock = xSemaphoreCreateMutex();  // Create lock for PM (needed due to Read-Modify-Write)
+	satLinkInfo->actUpdateLock = xSemaphoreCreateMutex();			// Create lock for actuator update
 	rmt_config_t rmtTxConfig;                                       // Create RMT RX/TX
 	rmt_config_t rmtRxConfig;
 	satLinkInfo->address = address_p;                               // Set address, RMT RX/TX pins-, Channels, mem-banks...
@@ -507,13 +508,15 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 	satLinkInfo->errThresHigh = 20;                                 // Set default and initial values
 	satLinkInfo->errThresLow = 2;
 	satLinkInfo->noOfSats = 0;
+	satLinkInfo->satSelfTest = NO_TEST;
 	satLinkInfo->opState = SAT_OP_DISABLE | SAT_OP_INIT;
 	satLinkInfo->admState = SAT_ADM_DISABLE;
 	satLinkInfo->satLinkStateCb = NULL;
 	satLinkInfo->satDiscoverCb = NULL;
-	satLinkInfo->serverCrcTst = SAT_CRC_TEST_INACTIVE;
-	satLinkInfo->clientCrcTst = SAT_CRC_TEST_INACTIVE;
 	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {         // Set satelite default and initial values
+		satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_INACTIVE;
+		satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_INACTIVE;
+		satLinkInfo->wdTst[i] = SAT_WD_TEST_INACTIVE;
 		satLinkInfo->sateliteHandle[i] = NULL;
 		satLinkInfo->txSatStruct[i].enable = false;
 		satLinkInfo->txSatStruct[i].setWdErr = false;
@@ -567,9 +570,9 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 	rmt_driver_install(satLinkInfo->rxCh, 10000, 0);
 	rmt_get_ringbuf_handle(satLinkInfo->rxCh, &satLinkInfo->rb);
 	satLinkInfo->linkReEstablishTimerHandle = xTimerCreate          // Create (but dont start) the link re-establish timer
-	("LinkReEstablishTimer",
-		pdMS_TO_TICKS(T_REESTABLISH_LINK_MS),
-		pdFALSE, (void*)this, &linkReEstablish);
+		("LinkReEstablishTimer",
+			pdMS_TO_TICKS(T_REESTABLISH_LINK_MS),
+			pdFALSE, (void*)this, &linkReEstablish);
 }
 
 /*sateliteLink Destructur*/
@@ -829,6 +832,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 	while (true) {                                                   // Link scan loop
 		t0 = esp_timer_get_time();
     //Serial.printf("satLinkInfo->noOfSats: %d\n", satLinkInfo->noOfSats);
+		xSemaphoreTake(satLinkInfo->actUpdateLock, portMAX_DELAY);
 		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {       // Populate the TX structs with data from all existing satelites
 			//for (uint8_t i = 0; i < 1; i++) {
 			//Serial.printf("Satelite %d, Inv Server CRC Cmd: %s\n", i, satLinkInfo->txSatStruct[i].invServerCrc ? "true" : "false");                        
@@ -837,58 +841,75 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			else
 				satLinkInfo->txSatStruct[i].startMark = 0x00;
 
+			if (satLinkInfo->clientCrcTst[i])
+				//Serial.printf("Client CRC Test status for Sat %d: %d\n", i, satLinkInfo->clientCrcTst[i]);
+
+			if (satLinkInfo->serverCrcTst[i] != SAT_CRC_TEST_ACTIVE && satLinkInfo->serverCrcTst[i] != SAT_CRC_TEST_INACTIVE)
+				satLinkInfo->serverCrcTst[i]--;                    // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual CRC errors
+			if (satLinkInfo->clientCrcTst[i] != SAT_CRC_TEST_ACTIVE && satLinkInfo->clientCrcTst[i] != SAT_CRC_TEST_INACTIVE)
+				satLinkInfo->clientCrcTst[i]--;                    // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual CRC errors
+			if (satLinkInfo->wdTst[i] != SAT_WD_TEST_ACTIVE && satLinkInfo->wdTst[i] != SAT_WD_TEST_INACTIVE)
+				satLinkInfo->wdTst[i]--;                           // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual watchdog errors
 			if (satLinkInfo->txSatStruct[i].dirty == true) {        // Only update the TX struct if there is new satelite data
+				//Serial.printf("Actmode[3] is: %d, ActVal[3] is: %d \n", satLinkInfo->txSatStruct[i].actMode[3], satLinkInfo->txSatStruct[i].actVal[3]);
 				if (satLinkInfo->txSatStruct[i].invServerCrc) {
 					//Serial.printf("Server CRC Inv ordered\n");
-					satLinkInfo->serverCrcTst = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a server CRC test
+					satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a server CRC test
 				}
-				else if (!satLinkInfo->txSatStruct[i].invServerCrc && satLinkInfo->serverCrcTst == SAT_CRC_TEST_ACTIVE)
-					satLinkInfo->serverCrcTst = SAT_CRC_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satelite ceased ordered for server CRC test
-				else if (satLinkInfo->serverCrcTst != SAT_CRC_TEST_ACTIVE && satLinkInfo->serverCrcTst != SAT_CRC_TEST_INACTIVE)
-					satLinkInfo->serverCrcTst--;                    // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual CRC errors
+				else if (!satLinkInfo->txSatStruct[i].invServerCrc && satLinkInfo->serverCrcTst[i] == SAT_CRC_TEST_ACTIVE)
+					satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satelite ceased ordered for server CRC test
 
 				if (satLinkInfo->txSatStruct[i].invClientCrc) {
-					//Serial.printf("Client CRC Inv ordered\n");
-					satLinkInfo->clientCrcTst = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a client CRC test
+					//Serial.printf("Client CRC Inv ordered for sat %d\n", i);
+					satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a client CRC test
 					satLinkInfo->txSatStruct[i].cmdInvCrc = true;
 				}
-				else if (!satLinkInfo->txSatStruct[i].invClientCrc && satLinkInfo->clientCrcTst == SAT_CRC_TEST_ACTIVE) {
-					satLinkInfo->clientCrcTst = SAT_CRC_TEST_DEACTIVATING;// Set TEST DEACTIVATING as the satelite ceased ordered for client CRC test
+				else if (!satLinkInfo->txSatStruct[i].invClientCrc && satLinkInfo->clientCrcTst[i] == SAT_CRC_TEST_ACTIVE) {
+					//Serial.printf("Client CRC Inv ceased for sat %d\n", i);
+					satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_DEACTIVATING;// Set TEST DEACTIVATING as the satelite ceased ordered for client CRC test
 					satLinkInfo->txSatStruct[i].cmdInvCrc = false;
 				}
-				else if (satLinkInfo->clientCrcTst != SAT_CRC_TEST_ACTIVE && satLinkInfo->clientCrcTst != SAT_CRC_TEST_INACTIVE)
-					satLinkInfo->clientCrcTst--;                    // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual CRC errors
 
 				if (satLinkInfo->txSatStruct[i].setWdErr) {
 					//Serial.printf("WD err ordered\n");
-					satLinkInfo->wdTst = SAT_WD_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a server CRC test
+					satLinkInfo->wdTst[i] = SAT_WD_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a server CRC test
 					satLinkInfo->txSatStruct[i].cmdWdErr = true;
 				}
-				else if (!satLinkInfo->txSatStruct[i].setWdErr && satLinkInfo->wdTst == SAT_WD_TEST_ACTIVE) {
-					satLinkInfo->wdTst = SAT_WD_TEST_DEACTIVATING;  // Set TEST DEACTIVATING as the satelite has ceased order for watchdog test
+				else if (!satLinkInfo->txSatStruct[i].setWdErr && satLinkInfo->wdTst[i] == SAT_WD_TEST_ACTIVE) {
+					satLinkInfo->wdTst[i] = SAT_WD_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satelite has ceased order for watchdog test
 					satLinkInfo->txSatStruct[i].cmdWdErr = false;
 				}
-				else if (satLinkInfo->wdTst != SAT_WD_TEST_ACTIVE && satLinkInfo->wdTst != SAT_WD_TEST_INACTIVE)
-					satLinkInfo->wdTst--;                           // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual watchdog errors
 
 				if (satLinkInfo->txSatStruct[i].enable)
 					satLinkInfo->txSatStruct[i].cmdEnable = 0x01;
 				else
 					satLinkInfo->txSatStruct[i].cmdEnable = 0x00;
-
 				populateSatLinkBuff(&satLinkInfo->txSatStruct[i], &satLinkInfo->txSatBuff[i * 8]); // Poulate the linkbuffer with ne satelite TX data
 				//Serial.printf("IvertCRC for satelite %d : %X\n", i, satLinkInfo->txSatStruct[i].invServerCrc == 0x01);
 				crc(&satLinkInfo->txSatBuff[i * 8 + SATBUF_CRC_BYTE_OFFSET], &satLinkInfo->txSatBuff[i * 8], // and calculate the CRC checksum
 					8, i, (satLinkInfo->txSatStruct[i].invServerCrc == 0x01));
-				satLinkInfo->txSatStruct[i].dirty = false;
 			}
 			//Serial.printf("Transmitbuffer for Satelite %d : ", i);
 			//for(uint8_t m = 0; m < 8; m++)
 			//Serial.printf("%x:", satLinkInfo->txSatBuff[i * 8 + m]);
 			//Serial.printf("\n");
 		}
-		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++)         // Write RMT samples from TX buffer
+		//if (satLinkInfo->txSatStruct[1].actVal[3] != 0)
+			//Serial.printf("Updating\n");
+		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {        // Write RMT samples from TX buffer
 			rmt_write_sample(satLinkInfo->txCh, &satLinkInfo->txSatBuff[i * 8], (size_t)8, false);
+			if (satLinkInfo->txSatStruct[i].dirty) {
+				for (uint8_t j = 0; j < NO_OF_ACT; j++) {				// If a pulse, it shouldnt be repeated
+					if (satLinkInfo->txSatStruct[i].actMode[j] == SATMODE_PULSE || satLinkInfo->txSatStruct[i].actMode[j] == SATMODE_PULSE_INV)
+						satLinkInfo->txSatStruct[i].actVal[j] = 0;
+				}
+				populateSatLinkBuff(&satLinkInfo->txSatStruct[i], &satLinkInfo->txSatBuff[i * 8]);
+				crc(&satLinkInfo->txSatBuff[i * 8 + SATBUF_CRC_BYTE_OFFSET], &satLinkInfo->txSatBuff[i * 8], // and calculate the CRC checksum
+					8, i, (satLinkInfo->txSatStruct[i].invServerCrc == 0x01));
+				satLinkInfo->txSatStruct[i].dirty = false;
+			}
+		}
+		xSemaphoreGive(satLinkInfo->actUpdateLock);
 
 		tot_rx_size = 0;
 		index = 0;
@@ -897,7 +918,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			if (items == NULL) {                                    // No more data to read
 				if (tot_rx_size != satLinkInfo->noOfSats * 8 * 8) { // Size of read data is wrong
 					//if (tot_rx_size != 8 * 8) {
-					rxDataSizeErr = true;
+					 rxDataSizeErr = true;
 					//Serial.printf("Size ERR, size: %d, number of sats: %d\n", tot_rx_size, satLinkInfo->noOfSats);
 					break;
 				}
@@ -960,15 +981,16 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 				satLinkInfo->performanceCounters.rxDataSizeErrSec += rxDataSizeErr;
 				satLinkInfo->performanceCounters.rxSymbolErr += rxSymbolErr;
 				satLinkInfo->performanceCounters.rxSymbolErrSec += rxSymbolErr;
-				if (satLinkInfo->serverCrcTst == SAT_CRC_TEST_INACTIVE) {
+				if (satLinkInfo->serverCrcTst[i] == SAT_CRC_TEST_INACTIVE) {
 					satLinkInfo->performanceCounters.remoteCrcErr += remoteCrcErr;
 					satLinkInfo->performanceCounters.remoteCrcErrSec += remoteCrcErr;
 				}
-				if (satLinkInfo->clientCrcTst == SAT_CRC_TEST_INACTIVE) {
+				if (satLinkInfo->clientCrcTst[i] == SAT_CRC_TEST_INACTIVE) {
+					//Serial.printf("Increasing rxCRCCnt for Sat %d\n", i);
 					satLinkInfo->performanceCounters.rxCrcErr += rxCrcErr;
 					satLinkInfo->performanceCounters.rxCrcErrSec += rxCrcErr;
 				}
-				if (satLinkInfo->wdTst == SAT_WD_TEST_INACTIVE) {
+				if (satLinkInfo->wdTst[i] == SAT_WD_TEST_INACTIVE) {
 					satLinkInfo->performanceCounters.wdErr += wdErr;
 					satLinkInfo->performanceCounters.wdErrSec += wdErr;
 				}
@@ -1230,11 +1252,13 @@ satErr_t satelite::setSatActMode(actMode_t actMode_p, uint8_t actIndex_p) {
 
 /*satelite setSatActVal*/
 satErr_t satelite::setSatActVal(uint8_t actVal_p, uint8_t actIndex_p) {
-	if (actIndex_p > 3)
+	if (actIndex_p > (NO_OF_ACT - 1))
 		return(returnCode(SAT_ERR_PARAM_ERR, 0));
+	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->actVal[actIndex_p] = actVal_p;                             // Inform the satelite link about the new act value through shared mem
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].actVal[actIndex_p] = actVal_p;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
+	xSemaphoreGive(satInfo->satLinkParent->satLinkInfo->actUpdateLock);
 	return(returnCode(SAT_OK, 0));
 }
 
@@ -1261,16 +1285,19 @@ void satelite::satUnRegSenseCb(void) {
 	satInfo->senseCb = NULL;
 }
 
-/*satelite satUnRegSenseCb*/
+/*satelite satSelfTest*/
 satErr_t satelite::satSelfTest(selfTestCb_t selfTestCb_p) {
+	//Serial.printf("Entering Selftest for satelite: %d\n", satInfo->address);
 	if (satInfo->opState) {
-		//Serial.printf("Self-test, satelite in wrong state\n");
+		//Serial.printf("Self-test, satelite %d in wrong state\n", satInfo->address);
 		return(returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
 	}
-	if (satInfo->selfTestCb != NULL) {
-		//Serial.printf("Self-test, satelite self test busy\n");
+	//Serial.printf("Satelite test state: %d, Link satelite test state: %d\n", satInfo->selftestPhase, satInfo->satLinkParent->satLinkInfo->satSelfTest);
+	if (satInfo->selftestPhase != NO_TEST || satInfo->satLinkParent->satLinkInfo->satSelfTest != NO_TEST) {
+		//Serial.printf("Self-test, satelite %d self test busy\n", satInfo->address);
 		return(returnCode(SAT_ERR_BUSY_ERR, 0));
 	}
+	//Serial.printf("Self-test, satelite %d self test NOT busy - starting\n", satInfo->address);
 	satInfo->selfTestCb = selfTestCb_p;
 	genServerCrcErr();                              // This will initiate the sequence of all self tests
 	return SAT_OK;
@@ -1332,7 +1359,7 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 		//Serial.printf("Counting remoteCrc test counters\n");
 		satInfo->performanceCounters.testRemoteCrcErr++;
 		satInfo->serverCrcTest = SAT_CRC_TEST_DEACTIVATING;
-    //Serial.printf("Satelite selftest is disabling CRC invert");
+		//Serial.printf("Satelite selftest is disabling Server CRC invert\n");
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invServerCrc = false;
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
@@ -1349,10 +1376,12 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 		//Serial.printf("Counting rxCrc test counters\n");
 		satInfo->performanceCounters.testRxCrcErr++;
 		satInfo->clientCrcTest = SAT_CRC_TEST_DEACTIVATING;
+		//Serial.printf("Satelite UPDATE - Satelite selftest is disabling Client CRC invert for Sat%d\n", satInfo->address);
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invClientCrc = false;
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
 	else if (status_p->rxCrcErr) {
+		//Serial.printf("Draining - Counting rxCrc test counters\n");
 		satInfo->clientCrcTest--;
 		satInfo->performanceCounters.testRxCrcErr++;
 	}
@@ -1364,6 +1393,7 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 		//Serial.printf("Counting wdErr test counters\n");
 		satInfo->performanceCounters.testWdErr++;
 		satInfo->wdTest = SAT_WD_TEST_DEACTIVATING;
+		//Serial.printf("Satelite selftest is disabling WD test\n");
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].setWdErr = false;
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
@@ -1438,7 +1468,8 @@ void satelite::opBlock(satOpState_t opState_p) {
 void satelite::opDeBlock(satOpState_t opState_p) {
 	//Serial.printf("Satelite OP deblocked received :0x%x\n", opState_p);
 	if (!(satInfo->opState = satInfo->opState & ~opState_p)) {
-		satSelfTest(&selftestRes);
+		while (satSelfTest(&selftestRes) == SAT_ERR_BUSY_ERR) 
+			vTaskDelay(10 / portTICK_PERIOD_MS);
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].enable = true; // Enable the satelite
 		for (uint8_t i = 0; i < NO_OF_ACT; i++)                              // Set actuator mode
 			satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].actMode[i] = satInfo->actMode[i];
@@ -1515,53 +1546,61 @@ void satelite::filterExp(TimerHandle_t timerHandle) {
 
 /*satelite genServerCrcErr*/
 void satelite::genServerCrcErr(void) {
-	//Serial.printf("Generating Server CRC Error\n");
+	//Serial.printf("Generating Server CRC Error for satelite: %d\n", satInfo->address);
+	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->performanceCounters.testRemoteCrcErr = 0;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invServerCrc = true;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	satInfo->serverCrcTest = SAT_CRC_TEST_ACTIVE;
 	satInfo->selftestPhase = SERVER_CRC_TEST;
+	satInfo->satLinkParent->satLinkInfo->satSelfTest = SERVER_CRC_TEST;
+	xSemaphoreGive(satInfo->satLinkParent->satLinkInfo->actUpdateLock);
 	assert(xTimerStart(satInfo->selfTestTimerHandle, 10) != pdFAIL);
 }
 
 /*satelite genClientCrcErr*/
 void satelite::genClientCrcErr(void) {
-	//Serial.printf("Generating Client CRC Error\n");
+	//Serial.printf("Generating Client CRC Error for satelite: %d\n", satInfo->address);
+	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->performanceCounters.testRxCrcErr = 0;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invClientCrc = true;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	satInfo->clientCrcTest = SAT_CRC_TEST_ACTIVE;
 	satInfo->selftestPhase = CLIENT_CRC_TEST;
+	satInfo->satLinkParent->satLinkInfo->satSelfTest = CLIENT_CRC_TEST;
+	xSemaphoreGive(satInfo->satLinkParent->satLinkInfo->actUpdateLock);
 	assert(xTimerStart(satInfo->selfTestTimerHandle, 10) != pdFAIL);
 }
 
 /*satelite genWdErr*/
 void satelite::genWdErr(void) {
-	//Serial.printf("Generating WD Error\n");
+	//Serial.printf("Generating WD Errorfor satelite: %d\n", satInfo->address);
+	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->performanceCounters.testWdErr = 0;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].setWdErr = true;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	satInfo->wdTest = SAT_WD_TEST_ACTIVE;
 	satInfo->selftestPhase = WD_TEST;
+	satInfo->satLinkParent->satLinkInfo->satSelfTest = WD_TEST;
+	xSemaphoreGive(satInfo->satLinkParent->satLinkInfo->actUpdateLock);
 	assert(xTimerStart(satInfo->selfTestTimerHandle, 10) != pdFAIL);
 }
 
 /*satelite selfTestTimeout*/
 void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
 	satelite* satObj = (satelite*)pvTimerGetTimerID(timerHandle);
-	//Serial.printf("Entering\n");
 
 	switch (satObj->satInfo->selftestPhase) {
 	case SERVER_CRC_TEST:
 		if (!satObj->satInfo->performanceCounters.testRemoteCrcErr) {
-			Serial.printf("Selftest expected remote CRC errors but got none\n");
+			//Serial.printf("Selftest expected remote CRC errors but got none for satelite: %d\n", satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_SELFTEST_SERVER_CRC_ERR);
 			satObj->satInfo->serverCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
-			satObj->satInfo->selfTestCb = NULL;
+			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
 		else {
-			Serial.printf("Selftest got %d remote CRC errors\n", satObj->satInfo->performanceCounters.testRemoteCrcErr);
+			//Serial.printf("Selftest got %d remote CRC errors for satelite: %d\n", satObj->satInfo->performanceCounters.testRemoteCrcErr, satObj->satInfo->address);
 			satObj->satInfo->serverCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->genClientCrcErr();
 		}
@@ -1569,15 +1608,14 @@ void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
 
 	case CLIENT_CRC_TEST:
 		if (!satObj->satInfo->performanceCounters.testRxCrcErr) {
-			Serial.printf("Selftest expected remote CRC errors but got none\n");
+			//Serial.printf("Selftest expected RX CRC errors but got none for satelite: %d\n", satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_SELFTEST_CLIENT_CRC_ERR);
 			satObj->satInfo->clientCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
-			satObj->satInfo->selfTestCb = NULL;
-
+			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
 		else {
-			Serial.printf("Selftest got %d rx CRC errors\n", satObj->satInfo->performanceCounters.testRxCrcErr);
+			//Serial.printf("Selftest got %d rx CRC errors for satelite: %d\n", satObj->satInfo->performanceCounters.testRxCrcErr, satObj->satInfo->address);
 			satObj->satInfo->clientCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->genWdErr();
 		}
@@ -1585,20 +1623,19 @@ void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
 
 	case WD_TEST:
 		if (!satObj->satInfo->performanceCounters.testWdErr) {
-			Serial.printf("Selftest expected WD errors but got none\n");
+			//Serial.printf("Selftest expected WD errors but got none for satelite: %d\n", satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_SELFTEST_WD_ERR);
 			satObj->satInfo->wdTest = SAT_WD_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
-			satObj->satInfo->selfTestCb = NULL;
+			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
 		else {
-			Serial.printf("Selftest got %d wd errors\n", satObj->satInfo->performanceCounters.testWdErr);
+			//Serial.printf("Selftest ENDED!!! got %d wd errors for satelite: %d\n", satObj->satInfo->performanceCounters.testWdErr, satObj->satInfo->address);
+			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_OK);
 			satObj->satInfo->wdTest = SAT_WD_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
-			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_OK);
-			satObj->satInfo->selfTestCb = NULL;
+			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
-		//Serial.printf("Breaking\n");
 		break;
 
 	default:

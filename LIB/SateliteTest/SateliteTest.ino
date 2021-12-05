@@ -84,7 +84,7 @@ satErr_t rc;
       Serial.printf("Unexpected error - No reference to Satelite %d, breaking\n", satAddr_p);
       assert(false);
     }
-    assert(noOfSat == satLink->getSatLinkNoOfSats());
+    //assert(noOfSat == satLink->getSatLinkNoOfSats());
     assert(linkAddr_p == satLink->getAddress());
     assert(satelite_p == satLink->getsatHandle(satAddr_p));
     satelites[satAddr_p]->satRegSenseCb(&newSensorVal);
@@ -97,7 +97,7 @@ satErr_t rc;
     Serial.printf("Set actuator modes for Satelite %d\n", satAddr_p);
     for(uint8_t i = 0; i < NO_OF_ACT; i++)
       satelites[satAddr_p]->setSatActVal(0, i);
-    satelites[satAddr_p]->setSenseFilter(5000, 7); //WE NEED TO DEVELOP A TESTCASE AROUND THIS
+    satelites[satAddr_p]->setSenseFilter(5000, 7); // Set filter value 5 seconds for Sensor 7 - default for the rest
     satelites[satAddr_p]->setErrTresh(10, 1);
     Serial.printf("Set initial actuator values for Satelite %d\n", satAddr_p);
     rc = satelites[satAddr_p]->enableSat();
@@ -119,7 +119,6 @@ satErr_t rc;
     return;
   }  
 }
-
 
 void selfTestRes(satelite* satHandle_p, uint8_t satLinkAddr_p, uint8_t satAddr_p, satErr_t err_p){
   Serial.printf("Selftest of satelite %d:%d ended with result code %x\n", satLinkAddr_p, satAddr_p, err_p);
@@ -183,16 +182,34 @@ void loop() {
   if(loopcnt == 45){
     for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
       if (!drain[i] && satelites[i] != NULL){
+        xSemaphoreGive(methodAccessCnt[i]);
+        uint8_t rc;
         Serial.printf("Starting self-test for satelite %d\n", i);
-        assert(satelites[i]->satSelfTest(&selfTestRes) == SAT_OK);
+        while(satelites[i]->satSelfTest(&selfTestRes) == SAT_ERR_BUSY_ERR){
+          Serial.printf("Selftest was busy for satelite %d - waiting\n", i);
+          vTaskDelay(50 / portTICK_PERIOD_MS);
+          for (uint8_t j = 0; j < MAX_NO_OF_SAT_PER_CH; j++){
+            if (!drain[j] && satelites[j] != NULL){
+              xSemaphoreGive(methodAccessCnt[j]);
+              satelites[j]->setSatActVal(10, 2);
+              satelites[j]->setSatActVal(10, 3);
+              xSemaphoreTake(methodAccessCnt[j], portMAX_DELAY);
+            }
+          }
+        }
+        assert(rc == SAT_OK);
+        xSemaphoreTake(methodAccessCnt[i], portMAX_DELAY);
       }
     }
   }
+
   if(loopcnt == 90){
     Serial.printf("Disabling all satelites\n");
     for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
       if (!drain[i] && satelites[i] != NULL){
+        xSemaphoreGive(methodAccessCnt[i]);
         rc = satelites[i]->disableSat();
+        xSemaphoreTake(methodAccessCnt[i], portMAX_DELAY);
         if(rc){
           Serial.printf("Failed to disable satelite %d, return code %x\n", i, rc);
           assert(rc == 0);
@@ -205,7 +222,9 @@ void loop() {
     Serial.printf("Re-enabling all satelites\n");
     for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
       if (!drain[i] && satelites[i] != NULL){
+        xSemaphoreGive(methodAccessCnt[i]);
         rc = satelites[i]->enableSat();
+        xSemaphoreTake(methodAccessCnt[i], portMAX_DELAY);
         if(rc){
           Serial.printf("Failed to disable satelite %d, return code %x\n", i, rc);
           assert(rc == 0);
@@ -213,6 +232,7 @@ void loop() {
       } 
     }
   }
+ 
   if(loopcnt == 270){
     Serial.printf("disabling satelite Link\n");
     for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
@@ -239,37 +259,24 @@ void loop() {
     }
   }
 
-  if(loopcnt == 450){
-    Serial.printf("Starting a self-test\n");
-    for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
-      if (!drain[i] && satelites[i] != NULL){
-        rc = satelites[i]->satSelfTest(&selfTestRes );
-        if(rc){
-          Serial.printf("Failed to start self-test\n");
-          assert(rc == 0);
-        }
-      }
-    }
-  }
-    
+
   for(uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {
     if (!drain[i] && satelites[i] != NULL){
+      //Serial.printf("Updating values - inverse values for even and odd satellites");
       xSemaphoreGive(methodAccessCnt[i]);
-      satelites[i]->setSatActVal(actVal, 0);
-      satelites[i]->setSatActVal(actVal, 1);
-      satelites[i]->setSatActVal(128, 2);
-      satelites[i]->setSatActVal(64, 3);
+      satelites[i]->setSatActVal(i % 2 ? actVal:(255 - actVal), 0);
+      satelites[i]->setSatActVal(i % 2 ? actVal:(255 - actVal), 1);
+      satelites[i]->setSatActVal(i % 2 ? actVal:(255 - actVal), 2);
+      satelites[i]->setSatActVal(i % 2 ? actVal:(255 - actVal), 3);
       xSemaphoreTake(methodAccessCnt[i], portMAX_DELAY);
     }
   }
-  //Serial.printf("Count is %d\n", uxSemaphoreGetCount(methodAccessCnt[0]));
-
+  
   actVal ++;
-
   if(timeCnt >= 30){
     timeCnt = 0;
     buffPointer = 0;
-
+    Serial.printf("Actuator value for even Actuators:%d - and for odd Actuators:%d\n", 255-actVal, actVal);
     satLink->getSatStats(&satLinkStats, false); 
     formatSatStat(reportBuff, 2000, &buffPointer, buffPointer, satLink->getAddress(), 0, satLink->getAdmState(), 
                   satLink->getOpState(), &satLinkStats,

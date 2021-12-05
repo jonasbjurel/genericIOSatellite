@@ -177,16 +177,18 @@ struct satLinkInfo_t {
 	uint32_t errThresLow;										// Cumulative link error second cease threshold (local and remote)
 	int64_t oneSecTimer;										// One secont timer counter for ErrSec evaluation
 	uint8_t noOfSats;											// Number of satelites on the link
+	uint8_t satSelfTest;										// Indication of a sat selftest ongoing on the link MAYBE WE CAN RUN SELFTESTS IN PARALLEL
 	satelite* sateliteHandle[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the satelite object handles
 	satStatus_t satStatus[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the sat status structs
 	satLinkStateCb_t satLinkStateCb;							// Call-back for link operational status changes
 	satDiscoverCb_t satDiscoverCb;								// Call-back for discovered and removed satelites
 	TaskHandle_t scanTaskHandle;								// Link scan task handle
 	TimerHandle_t linkReEstablishTimerHandle;					// Link re-establishment timer handle
-	uint8_t serverCrcTst;										// Server CRC Test state
-	uint8_t clientCrcTst;										// Client CRC Test state
-	uint8_t wdTst;												// Watchdog test state
+	uint8_t serverCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Server CRC Test state for each satelite
+	uint8_t clientCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Client CRC Test state for each satelite
+	uint8_t wdTst[MAX_NO_OF_SAT_PER_CH + 1];					// Watchdog test state for each satelite
 	bool scan;													// Link scan state
+	SemaphoreHandle_t actUpdateLock;							// Actuator update lock
 };
 
 struct satInfo_t {
