@@ -1,5 +1,3 @@
-#ifndef SATELITE_H
-#define SATELITE_H
 /*==============================================================================================================================================*/
 /* License                                                                                                                                      */
 /*==============================================================================================================================================*/
@@ -23,6 +21,9 @@
 /*==============================================================================================================================================*/
 // See README.md
 /*============================================================== END Description ===============================================================*/
+
+#ifndef SATELITELIB_H
+#define SATELITELIB_H
 
 /*==============================================================================================================================================*/
 /* Include files                                                                                                                                */
@@ -84,10 +85,10 @@ typedef uint8_t satOpState_t;
 typedef uint8_t actMode_t;
 
 //Call-back prototypes - see README.md
-typedef void (*satLinkStateCb_t)(sateliteLink* sateliteLink_p, uint8_t LinkAddr_p, satOpState_t satOpState_p);
-typedef void (*satStateCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satOpState_t satOpState);
+typedef void (*satLinkStateCb_t)(sateliteLink* sateliteLink_p, uint8_t LinkAddr_p, satOpState_t satOpState_p, void* metaData_p);
+typedef void (*satStateCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satOpState_t satOpState, void* metaData_p);
 typedef void (*satSenseCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, uint8_t senseAddr_p, bool senseVal_p);
-typedef void (*satDiscoverCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, bool exists_p);
+typedef void (*satDiscoverCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, bool exists_p, void* metaData_p);
 typedef void (*selfTestCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satErr_t selftestErr_p);
 
 struct satWire_t {
@@ -181,7 +182,9 @@ struct satLinkInfo_t {
 	satelite* sateliteHandle[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the satelite object handles
 	satStatus_t satStatus[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the sat status structs
 	satLinkStateCb_t satLinkStateCb;							// Call-back for link operational status changes
+	void* satLinkStateCbMetadata;								// Call-back meta data
 	satDiscoverCb_t satDiscoverCb;								// Call-back for discovered and removed satelites
+	void* satDiscoverCbMetadata;									// Call-back meta data
 	TaskHandle_t scanTaskHandle;								// Link scan task handle
 	TimerHandle_t linkReEstablishTimerHandle;					// Link re-establishment timer handle
 	uint8_t serverCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Server CRC Test state for each satelite
@@ -197,6 +200,7 @@ struct satInfo_t {
 	uint8_t actVal[NO_OF_ACT];									// Satelite Actuators value array
 	sensor_t sensors[NO_OF_SENS];								// Sensor struct array
 	satStateCb_t stateCb;										// Call-back function for state changes
+	void* stateCbMetadata;
 	satSenseCb_t senseCb;										// Call-back function for sensor changes
 	selfTestCb_t selfTestCb;									// Call-back function for self-test results
 	satPerformanceCounters_t performanceCounters;				// Performance counter struct
@@ -415,9 +419,9 @@ public:
 	satErr_t enableSatLink(void);
 	satErr_t disableSatLink(void);
 	void setErrTresh(uint16_t p_errThresHigh, uint16_t p_errThresLow);
-	void satLinkRegStateCb(satLinkStateCb_t satLinkStateCb_p);
+	void satLinkRegStateCb(satLinkStateCb_t satLinkStateCb_p, void* metadata_p);
 	void satLinkUnRegStateCb(void);
-	void satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p);
+	void satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p, void* metaData_p);
 	void satLinkUnRegSatDiscoverCb(void);
 	uint8_t getAddress(void);
 	uint8_t getSatLinkNoOfSats(void);
@@ -477,7 +481,7 @@ public:
 	void satUnRegSenseCb(void);
 	satErr_t satSelfTest(selfTestCb_t selfTestCb_p);
 	bool getSenseVal(uint8_t senseAddr);
-	void satRegStateCb(satStateCb_t fn);
+	void satRegStateCb(satStateCb_t p_fn, void* p_metadata);
 	void satUnRegStateCb(void);
 	uint8_t getAddress(void);
 	void senseUpdate(satWire_t* rxData);
@@ -508,4 +512,4 @@ private:
 /*======================================================= END Class satelite ===================================================================*/
 
 /*================================================ END Function and Class prototypes ===========================================================*/
-#endif /*SATELITE_H*/
+#endif /*SATELITELIB_H*/

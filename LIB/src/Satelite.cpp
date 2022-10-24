@@ -512,7 +512,10 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 	satLinkInfo->opState = SAT_OP_DISABLE | SAT_OP_INIT;
 	satLinkInfo->admState = SAT_ADM_DISABLE;
 	satLinkInfo->satLinkStateCb = NULL;
+	satLinkInfo->satLinkStateCbMetadata = NULL;
 	satLinkInfo->satDiscoverCb = NULL;
+	satLinkInfo->satDiscoverCbMetadata = NULL;
+
 	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {         // Set satelite default and initial values
 		satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_INACTIVE;
 		satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_INACTIVE;
@@ -627,7 +630,7 @@ satErr_t sateliteLink::disableSatLink(void) {
 	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {            // Inform satelite users about intention to delete the satelite, and delete it
 		if (satLinkInfo->sateliteHandle[i] != NULL) {
 			if (satLinkInfo->satDiscoverCb != NULL)
-				satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, false);
+				satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, false, satLinkInfo->satDiscoverCbMetadata);
 			delete satLinkInfo->sateliteHandle[i];
 			satLinkInfo->sateliteHandle[i] = NULL;
 		}
@@ -642,8 +645,10 @@ void sateliteLink::setErrTresh(uint16_t p_errThresHigh, uint16_t p_errThresLow) 
 }
 
 /*sateliteLink satLinkRegStateCb*/
-void sateliteLink::satLinkRegStateCb(satLinkStateCb_t satLinkStateCb_p) {
+void sateliteLink::satLinkRegStateCb(satLinkStateCb_t satLinkStateCb_p, void* metaData_p) {
 	satLinkInfo->satLinkStateCb = satLinkStateCb_p;
+	satLinkInfo->satLinkStateCbMetadata = metaData_p;
+
 }
 
 /*sateliteLink satLinkUnRegStateCb*/
@@ -651,9 +656,10 @@ void sateliteLink::satLinkUnRegStateCb(void) {
 	satLinkInfo->satLinkStateCb = NULL;
 }
 
-void sateliteLink::satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p) {
+void sateliteLink::satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p, void* metaData_p) {
 	//Serial.printf("Got a satLinkRegSatDiscoverCb registration\n");
 	satLinkInfo->satDiscoverCb = satDiscoverCb_p;
+	satLinkInfo->satDiscoverCbMetadata = metaData_p;
 }
 
 void sateliteLink::satLinkUnRegSatDiscoverCb(void) {
@@ -708,7 +714,7 @@ satErr_t sateliteLink::satLinkDiscover(void) {
 		if (satLinkInfo->sateliteHandle[i] != NULL) {
 			//Serial.printf("Deleting Sat %d\n", i);
 			if (satLinkInfo->satDiscoverCb != NULL)
-				satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, false);
+				satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, false, satLinkInfo->satDiscoverCbMetadata);
 			satTmp = satLinkInfo->sateliteHandle[i];
 			satLinkInfo->sateliteHandle[i] = NULL;
 			delete satTmp;
@@ -765,7 +771,7 @@ satErr_t sateliteLink::satLinkDiscover(void) {
 		//Serial.printf("Creating satelite %d\n", i);
 		satLinkInfo->sateliteHandle[i] = new satelite(this, i);
 		if (satLinkInfo->satDiscoverCb != NULL) {
-			satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, true);
+			satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, true, satLinkInfo->satDiscoverCbMetadata);
 			//Serial.printf("Sent a discovery callback message for satelite %d\n", i);
 		}
 		//else
@@ -1060,7 +1066,7 @@ void sateliteLink::opBlock(satOpState_t opState_p) {
 				satLinkInfo->sateliteHandle[i]->opBlock(SAT_OP_CONTROLBOCK);
 	satLinkInfo->opState = satLinkInfo->opState | opState_p;            // Set new Opstate
 	if (satLinkInfo->satLinkStateCb != NULL)                            // call-back informing about new Opstate
-		satLinkInfo->satLinkStateCb(this, satLinkInfo->address, satLinkInfo->opState);
+		satLinkInfo->satLinkStateCb(this, satLinkInfo->address, satLinkInfo->opState, satLinkInfo->satLinkStateCbMetadata);
 
 	if (opState_p & SAT_OP_FAIL || opState_p & SAT_OP_ERR_SEC) {         // Start timer for link re-establishment
 		assert(xTimerStart(satLinkInfo->linkReEstablishTimerHandle, 10) != pdFAIL);
@@ -1080,7 +1086,7 @@ void sateliteLink::opDeBlock(satOpState_t opState_p) {
 				satLinkInfo->sateliteHandle[i]->opDeBlock(SAT_OP_CONTROLBOCK);
 	}
 	if (satLinkInfo->satLinkStateCb != NULL)                            // Call-back to inform about the new Opstate
-		satLinkInfo->satLinkStateCb(this, satLinkInfo->address, satLinkInfo->opState);
+		satLinkInfo->satLinkStateCb(this, satLinkInfo->address, satLinkInfo->opState, satLinkInfo->satLinkStateCbMetadata);
 }
 
 /*sateliteLink getOpState*/
@@ -1309,9 +1315,11 @@ bool satelite::getSenseVal(uint8_t senseAddr) {
 }
 
 /*satelite satRegStateCb*/
-void satelite::satRegStateCb(satStateCb_t fn) {
+void satelite::satRegStateCb(satStateCb_t fn, void* p_metadata) {
 	satInfo->stateCb = fn;
-	satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState);
+	satInfo->stateCbMetadata = p_metadata;
+
+	satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState, satInfo->stateCbMetadata);
 }
 
 /*satelite satUnRegStateCb*/
@@ -1461,7 +1469,7 @@ void satelite::opBlock(satOpState_t opState_p) {
 	}
 	satInfo->opState = satInfo->opState | opState_p;
 	if (satInfo->stateCb != NULL)                                       // Call-back with the new Opstate
-		satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState);
+		satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState, satInfo->stateCbMetadata);
 }
 
 /*satelite opDeBlock*/
@@ -1480,7 +1488,7 @@ void satelite::opDeBlock(satOpState_t opState_p) {
 	xSemaphoreGive(satInfo->performanceCounterLock);
 	//Serial.printf("Cleared all perf counters %u\n", satInfo->performanceCounters.rxCrcErr);
 	if (satInfo->stateCb != NULL)                                       // Call-back with the new Opstate
-		satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState);
+		satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState, satInfo->stateCbMetadata);
 }
 
 /*satelite getOpState*/

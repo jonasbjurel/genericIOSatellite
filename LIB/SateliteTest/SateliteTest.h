@@ -1,5 +1,5 @@
-#ifndef GENJMRI_H
-#define GENJMRI_H
+#ifndef SATELITETEST_H
+#define SATELITETEST_H
 #define PROJECT_ROOT C:\Users\jonas\OneDrive\Projects\ModelRailway\genericIOSatellite\LIB
 //#define PROJECT_ROOT %SATELLITE_LIB_PATH%
 
@@ -20,4 +20,4 @@
 #define SCAN_CORE       1
 #define SCAN_INTERVAL   5
 
-#endif /*GENJMRI_H*/
+#endif /*SATELITETEST_H*/

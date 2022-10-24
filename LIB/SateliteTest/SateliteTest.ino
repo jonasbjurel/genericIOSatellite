@@ -61,7 +61,7 @@ void newSatState(satelite* satelite_p, uint8_t linkAddr_p, uint8_t satAddr_p, sa
   Serial.printf("Satelite %d:%d changed opState to %s\n", linkAddr_p, satAddr_p, opStateStr);
 }
 
-void newSatLinkState(sateliteLink* sateliteLink_p, uint8_t linkAddr_p, satOpState_t opState_p) {
+void newSatLinkState(sateliteLink* sateliteLink_p, uint8_t linkAddr_p, satOpState_t opState_p, void* DUMMY) {
   char opStateStr[30];
 
   assert(opState_p == satLink->getOpState());
@@ -71,7 +71,7 @@ void newSatLinkState(sateliteLink* sateliteLink_p, uint8_t linkAddr_p, satOpStat
 }
 
 
-void satdiscovered(satelite* satelite_p, uint8_t linkAddr_p, uint8_t satAddr_p, bool exists_p){
+void satdiscovered(satelite* satelite_p, uint8_t linkAddr_p, uint8_t satAddr_p, bool exists_p, void* DUMMY){
 satErr_t rc;
 
   //Serial.printf("GOT A DISCOVER CALLBACK\n");
@@ -146,14 +146,14 @@ void setup() {
   }
   
   satLink = new sateliteLink(LINK_ADDRESS, (gpio_num_t)LINK_TX_PIN, (gpio_num_t)LINK_RX_PIN, (rmt_channel_t) RMT_TX_CHAN, (rmt_channel_t)RMT_RX_CHAN, RMT_TX_MEMBANK, RMT_RX_MEMBANK, SCAN_PRIO, SCAN_CORE, SCAN_INTERVAL);
-  satLink->satLinkRegSatDiscoverCb(&satdiscovered); 
+  satLink->satLinkRegSatDiscoverCb(&satdiscovered, NULL); 
   rc = satLink->enableSatLink();
   if(rc){
     Serial.printf("Failed to enable link, return code %x\n", rc);
     assert(rc == 0);
   }
 
-  satLink->satLinkRegStateCb(&newSatLinkState);
+  satLink->satLinkRegStateCb(&newSatLinkState, NULL);
   satLink->setErrTresh(20, 2);
   Serial.printf("Satelite Link enabled\n");
   actVal = 0;
