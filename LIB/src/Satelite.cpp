@@ -805,7 +805,7 @@ satErr_t sateliteLink::satLinkStartScan(void) {
 		6 * 1024,                                                   // Stack size
 		this,                                                       // Parameter passing
 		satLinkInfo->pollTaskPrio,                                  // Priority 0-24, higher is more
-		&satLinkInfo->scanTaskHandle,                               // Task handle
+		&(satLinkInfo->scanTaskHandle),                             // Task handle
 		satLinkInfo->pollTaskCore);                                 // Task core
 
 	if (taskRc != pdPASS)
@@ -1128,7 +1128,6 @@ void sateliteLink::chkErrSec(void) {
 
 	if (!satLinkInfo->errThresHigh)
 		return;
-	//Serial.printf("Im here\n");
 	ErrSum = satLinkInfo->performanceCounters.rxDataSizeErrSec +
 		satLinkInfo->performanceCounters.rxSymbolErrSec +
 		satLinkInfo->performanceCounters.rxCrcErrSec +
