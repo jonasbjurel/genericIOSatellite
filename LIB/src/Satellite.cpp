@@ -25,7 +25,7 @@
 /*==============================================================================================================================================*/
 /* Include files                                                                                                                                */
 /*==============================================================================================================================================*/
-#include "Satelite.h"
+#include "Satellite.h"
 /*============================================================= END Include files ==============================================================*/
 
 /*==============================================================================================================================================*/
@@ -99,9 +99,9 @@ satErr_t opStateToStr(satOpState_t opState_p, char* outputStr_p, uint8_t length_
 /*             uint16_t* usedBuff_p: How much of the buffer was used.                                                                           */
 /*             uint16_t buffOffset_p: Offset for filling in the buffer.                                                                         */
 /*             uint8_t linkAddr_p: Link address for the report.                                                                                 */
-/*             uint8_t satAddr_p`*: Satelite address for the report.                                                                            */
-/*             satAdmState_t admState_p: Administrative state for the object being reported (sateliteLink or satelite).                         */
-/*             satOpState_t opState_p: Operational state for the object being reported (sateliteLink or satelite).                              */
+/*             uint8_t satAddr_p`*: Satellite address for the report.                                                                            */
+/*             satAdmState_t admState_p: Administrative state for the object being reported (satelliteLink or satellite).                         */
+/*             satOpState_t opState_p: Operational state for the object being reported (satelliteLink or satellite).                              */
 /*             satPerformanceCounters_t* pmdata_p: Performance data structure.                                                                  */
 /*             uint16_t reportColumnItems: What pm data columns to include - see the format directives below.                                   */
 /*             uint16_t reportItemsMask: What pm data to report on.                                                                             */
@@ -365,7 +365,7 @@ void crc(uint8_t* crc_p, uint8_t* buff_p, uint16_t buffSize_p, uint8_t satNo_p, 
 		*crc_p = *crc_p | ((~crc^(satNo_p & 0x0F)^(satNo_p>>4&0x0F)) & 0x0F);
 	else
 		    *crc_p = *crc_p | ((crc^(satNo_p & 0x0F)^(satNo_p>>4&0x0F)) & 0x0F);
-  //Serial.printf("CRC calculation for Satelite %d - %s, Correct CRC-4: %X, Calculated and adjusted CRC-4: %X\n", satNo_p, invalidate_p ? "Invalidate CRC-4":"Validate CRC-4", crc&0x0F, *crc_p);
+	//Serial.printf("CRC calculation for Satellite %d - %s, Correct CRC-4: %X, Calculated and adjusted CRC-4: %X\n", satNo_p, invalidate_p ? "Invalidate CRC-4":"Validate CRC-4", crc&0x0F, *crc_p);
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -475,19 +475,19 @@ void clearPerformanceCounters(satPerformanceCounters_t* performanceCounters_p) {
 
 
 /*==============================================================================================================================================*/
-/* Class: sateliteLink                                                                                                                          */
-/* Purpose: The sateliteLink class manages the low-level Satelite link (I.e. OSI L1, L2 and L3). It is responsible for discovery-, and          */
-/* topology management of Satelites sitting on the Satelite link, but also responsible for scanning the link (providing instructions and        */
-/* pulling results from all the Satelites on a Satelite link), as well as responsible for the integrity of the link. It interchanges raw data   */
-/* from/to the satelite class objects of the Satelite link.                                                                                     */
+/* Class: satelliteLink                                                                                                                          */
+/* Purpose: The satelliteLink class manages the low-level Satellite link (I.e. OSI L1, L2 and L3). It is responsible for discovery-, and          */
+/* topology management of Satellites sitting on the Satellite link, but also responsible for scanning the link (providing instructions and        */
+/* pulling results from all the Satellites on a Satellite link), as well as responsible for the integrity of the link. It interchanges raw data   */
+/* from/to the satellite class objects of the Satellite link.                                                                                     */
 /* Methods: See README.md                                                                                                                       */
-/* Data structures: See Satelite.h                                                                                                              */
+/* Data structures: See Satellite.h                                                                                                              */
 /*==============================================================================================================================================*/
 
 /***** PUBLIC MEMBERS *****/
 
-/*sateliteLink Constructur*/
-sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxPin_p, rmt_channel_t txCh_p,
+/*satelliteLink Constructur*/
+satelliteLink::satelliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxPin_p, rmt_channel_t txCh_p,
 	rmt_channel_t rxCh_p, uint8_t txRmtMemBank_p, uint8_t rxRmtMemBank_p, UBaseType_t pollTaskPrio_p,
 	UBaseType_t pollTaskCore_p, uint8_t scanInterval_p) {
 	satLinkInfo = new satLinkInfo_t;
@@ -515,12 +515,13 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 	satLinkInfo->satLinkStateCbMetadata = NULL;
 	satLinkInfo->satDiscoverCb = NULL;
 	satLinkInfo->satDiscoverCbMetadata = NULL;
-
-	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {         // Set satelite default and initial values
+	satLinkInfo->satLinkScanCb = NULL;
+	satLinkInfo->satLinkScanCbMetadata = NULL;
+	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {         // Set satellite default and initial values
 		satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_INACTIVE;
 		satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_INACTIVE;
 		satLinkInfo->wdTst[i] = SAT_WD_TEST_INACTIVE;
-		satLinkInfo->sateliteHandle[i] = NULL;
+		satLinkInfo->satelliteHandle[i] = NULL;
 		satLinkInfo->txSatStruct[i].enable = false;
 		satLinkInfo->txSatStruct[i].setWdErr = false;
 		satLinkInfo->txSatStruct[i].invServerCrc = false;
@@ -542,6 +543,7 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 		satLinkInfo->txSatStruct[i].fbWdErr = 0x00;
 		satLinkInfo->txSatStruct[i].fbRemoteCrcErr = 0x00;
 		satLinkInfo->txSatStruct[i].dirty = true;
+		satLinkInfo->satelliteHandle[i] = new satellite(this, i);
 	}
 	satLinkInfo->scan = false;                                      // Initial scanning is false
 	clearPerformanceCounters(&satLinkInfo->performanceCounters);    // Clear all link counters
@@ -558,8 +560,17 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 	rmtTxConfig.tx_config.carrier_en = false;
 	rmtTxConfig.tx_config.loop_en = false;
 	rmtTxConfig.tx_config.idle_output_en = true;
-	assert(rmt_config(&rmtTxConfig) == ESP_OK);
-	assert(rmt_driver_install(satLinkInfo->txCh, 0, 0) == ESP_OK);
+	esp_err_t rc;
+	rc = rmt_config(&rmtTxConfig);
+	if (rc != ESP_OK) {
+		//Serial.printf("Failed to configure RMT, returned %s\n", esp_err_to_name(rc));
+		assert(false);
+	}
+	rc = rmt_driver_install(satLinkInfo->txCh, 0, 0);
+	if (rc != ESP_OK) {
+		//Serial.printf("Failed to install RMT driver, returned %s\n", esp_err_to_name(rc));
+		assert(false);
+	}
 	rmt_translator_init(satLinkInfo->txCh, ws28xx_rmt_tx_translator);
 	rmtRxConfig.rmt_mode = RMT_MODE_RX;
 	rmtRxConfig.channel = satLinkInfo->rxCh;
@@ -578,8 +589,8 @@ sateliteLink::sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxP
 			pdFALSE, (void*)this, &linkReEstablish);
 }
 
-/*sateliteLink Destructur*/
-sateliteLink::~sateliteLink(void) {                                 // sateliteLink destructor
+/*satelliteLink Destructur*/
+satelliteLink::~satelliteLink(void) {                                 // satelliteLink destructor
 	satLinkStopScan();                                              // Delete all allocated resources
 	assert(satLinkInfo->opState == SAT_OP_DISABLE);
 	assert(rmt_driver_uninstall(satLinkInfo->txCh) == ESP_OK);
@@ -588,18 +599,15 @@ sateliteLink::~sateliteLink(void) {                                 // sateliteL
 	delete satLinkInfo;
 }
 
-/*sateliteLink enableSatLink*/
-satErr_t sateliteLink::enableSatLink(void) {
-	//Serial.printf("Check sateliteHandle-3 satLinkInfo->sateliteHandle[8], value is now %i\n", satLinkInfo->sateliteHandle[8]);
+/*satelliteLink enableSatLink*/
+satErr_t satelliteLink::enableSatLink(void) {
+	//Serial.printf("Check satelliteHandle-3 satLinkInfo->satelliteHandle[8], value is now %i\n", satLinkInfo->satelliteHandle[8]);
 	esp_err_t rmtRc;
 	satErr_t rc;
-
 	if (satLinkInfo->admState != SAT_ADM_DISABLE)                    // Check if already Admin Blocked
 		return (returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
 	if (rmtRc = rmt_rx_start(satLinkInfo->rxCh, 1) != ESP_OK)        // Start RMT
 		return (returnCode(SAT_ERR_RMT_ERR, rmtRc));
-	if (rc = admDeBlock())                                          // Admin deblock
-		return (returnCode(rc, 0));
 	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Set up the tx struct data
 		satLinkInfo->txSatStruct[i].invServerCrc = false;
 		satLinkInfo->txSatStruct[i].invClientCrc = false;
@@ -611,11 +619,13 @@ satErr_t sateliteLink::enableSatLink(void) {
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 	if (rc = satLinkDiscover())                                      // Start Link discovery
 		return (returnCode(rc, 0));
+	if (rc = admDeBlock())                                          // Admin deblock
+		return (returnCode(rc, 0));
 	return (returnCode(SAT_OK, 0));
 }
 
-/*sateliteLink disableSatLink*/
-satErr_t sateliteLink::disableSatLink(void) {
+/*satelliteLink disableSatLink*/
+satErr_t satelliteLink::disableSatLink(void) {
 	esp_err_t rmtRc;
 	satErr_t rc;
 	if (satLinkInfo->admState != SAT_ADM_ENABLE)                    // Check if Admstate already blocked
@@ -627,62 +637,70 @@ satErr_t sateliteLink::disableSatLink(void) {
 	if (rc = satLinkStopScan())                                     // Stop Link scanning
 		return (returnCode(rc, 0));
 
-	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {            // Inform satelite users about intention to delete the satelite, and delete it
-		if (satLinkInfo->sateliteHandle[i] != NULL) {
+	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {            // Inform satellite users about intention to delete the satellite, and delete it
+		if (satLinkInfo->satelliteHandle[i] != NULL) {
 			if (satLinkInfo->satDiscoverCb != NULL)
-				satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, false, satLinkInfo->satDiscoverCbMetadata);
-			delete satLinkInfo->sateliteHandle[i];
-			satLinkInfo->sateliteHandle[i] = NULL;
+				satLinkInfo->satDiscoverCb(satLinkInfo->satelliteHandle[i], satLinkInfo->address, i, false, satLinkInfo->satDiscoverCbMetadata);
+			//delete satLinkInfo->satelliteHandle[i];
+			//satLinkInfo->satelliteHandle[i] = NULL;
 		}
 	}
 	return (returnCode(SAT_OK, 0));
 }
 
-/*sateliteLink setErrTresh*/
-void sateliteLink::setErrTresh(uint16_t p_errThresHigh, uint16_t p_errThresLow) {
+/*satelliteLink setErrTresh*/
+void satelliteLink::setErrTresh(uint16_t p_errThresHigh, uint16_t p_errThresLow) {
 	satLinkInfo->errThresHigh = p_errThresHigh;
 	satLinkInfo->errThresLow = p_errThresLow;
 }
 
-/*sateliteLink satLinkRegStateCb*/
-void sateliteLink::satLinkRegStateCb(satLinkStateCb_t satLinkStateCb_p, void* metaData_p) {
+/*satelliteLink satLinkRegStateCb*/
+void satelliteLink::satLinkRegStateCb(satLinkStateCb_t satLinkStateCb_p, void* metaData_p) {
 	satLinkInfo->satLinkStateCb = satLinkStateCb_p;
 	satLinkInfo->satLinkStateCbMetadata = metaData_p;
-
 }
 
-/*sateliteLink satLinkUnRegStateCb*/
-void sateliteLink::satLinkUnRegStateCb(void) {
+/*satelliteLink satLinkUnRegStateCb*/
+void satelliteLink::satLinkUnRegStateCb(void) {
 	satLinkInfo->satLinkStateCb = NULL;
 }
 
-void sateliteLink::satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p, void* metaData_p) {
-	//Serial.printf("Got a satLinkRegSatDiscoverCb registration\n");
+void satelliteLink::satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p, void* metaData_p) {
 	satLinkInfo->satDiscoverCb = satDiscoverCb_p;
 	satLinkInfo->satDiscoverCbMetadata = metaData_p;
 }
 
-void sateliteLink::satLinkUnRegSatDiscoverCb(void) {
+void satelliteLink::satLinkUnRegSatDiscoverCb(void) {
 	satLinkInfo->satDiscoverCb = NULL;
 }
 
-uint8_t sateliteLink::getAddress(void) {
+void satelliteLink::satLinkRegScanCb(satLinkScanCb_t satLinkScanCb_p, void* metaData_p) {
+	satLinkInfo->satLinkScanCb = satLinkScanCb_p;
+	satLinkInfo->satLinkScanCbMetadata = metaData_p;
+}
+
+void satelliteLink::satLinkUnRegScanCb(void) {
+	satLinkInfo->satLinkScanCb = NULL;
+	satLinkInfo->satLinkScanCbMetadata = NULL;
+}
+
+uint8_t satelliteLink::getAddress(void) {
 	return satLinkInfo->address;
 }
 
-/*sateliteLink getSatLinkNoOfSats*/
-uint8_t sateliteLink::getSatLinkNoOfSats(void) {
+/*satelliteLink getSatLinkNoOfSats*/
+uint8_t satelliteLink::getSatLinkNoOfSats(void) {
 	return satLinkInfo->noOfSats;
 }
 
-satErr_t sateliteLink::getSensorValRaw(uint8_t satAddress_p, uint8_t* sensorVal_p) {
+satErr_t satelliteLink::getSensorValRaw(uint8_t satAddress_p, uint8_t* sensorVal_p) {
 	if (satAddress_p >= satLinkInfo->noOfSats)
 		return (returnCode(SAT_ERR_NOT_EXIST_ERR, 0));
 	*sensorVal_p = satLinkInfo->rxSatStruct[satAddress_p].sensorVal;
 	return (returnCode(SAT_OK, 0));
 }
 
-void sateliteLink::getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats) {
+void satelliteLink::getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats) {
 	xSemaphoreTake(satLinkInfo->performanceCounterLock, portMAX_DELAY);
 	memcpy((void*)satStats_p, (void*)&(satLinkInfo->performanceCounters), sizeof(satPerformanceCounters_t));
 	if (resetStats)
@@ -690,34 +708,34 @@ void sateliteLink::getSatStats(satPerformanceCounters_t* satStats_p, bool resetS
 	xSemaphoreGive(satLinkInfo->performanceCounterLock);
 }
 
-void sateliteLink::clearSatStats(void) {
+void satelliteLink::clearSatStats(void) {
 	xSemaphoreTake(satLinkInfo->performanceCounterLock, portMAX_DELAY);
 	clearPerformanceCounters(&satLinkInfo->performanceCounters);
 	xSemaphoreGive(satLinkInfo->performanceCounterLock);
 }
 
-/*sateliteLink getsatRef*/
-satelite* sateliteLink::getsatHandle(uint8_t satAddr_p) {
+/*satelliteLink getsatRef*/
+satellite* satelliteLink::getsatHandle(uint8_t satAddr_p) {
 	if (satAddr_p >= satLinkInfo->noOfSats)
 		return NULL;
-	return satLinkInfo->sateliteHandle[satAddr_p];
+	return satLinkInfo->satelliteHandle[satAddr_p];
 }
 
 /***** PRIVATE MEMBERS *****/
-/*sateliteLink satLinkDiscover*/
-satErr_t sateliteLink::satLinkDiscover(void) {
-	satelite* satTmp;
+/*satelliteLink satLinkDiscover*/
+satErr_t satelliteLink::satLinkDiscover(void) {
+	//satellite* satTmp;
 
 	//Serial.printf("Running discovery\n");
 	opBlock(SAT_OP_INIT);                                           // Set Link Opstate to INIT
-	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {            // Delete any existing satelites after having informed their users
-		if (satLinkInfo->sateliteHandle[i] != NULL) {
+	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH; i++) {            // Delete any existing satellites after having informed their users
+		if (satLinkInfo->satelliteHandle[i] != NULL) {
 			//Serial.printf("Deleting Sat %d\n", i);
 			if (satLinkInfo->satDiscoverCb != NULL)
-				satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, false, satLinkInfo->satDiscoverCbMetadata);
-			satTmp = satLinkInfo->sateliteHandle[i];
-			satLinkInfo->sateliteHandle[i] = NULL;
-			delete satTmp;
+				satLinkInfo->satDiscoverCb(satLinkInfo->satelliteHandle[i], satLinkInfo->address, i, false, satLinkInfo->satDiscoverCbMetadata);
+			//satTmp = satLinkInfo->satelliteHandle[i];
+			//satLinkInfo->satelliteHandle[i] = NULL;
+			//delete satTmp;
 		}
 		satLinkInfo->satStatus[i].dirty = false;
 	}
@@ -740,11 +758,11 @@ satErr_t sateliteLink::satLinkDiscover(void) {
 		return (returnCode(SAT_ERR_EXESSIVE_SATS, 0));
 	}
 
-	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Check that satelites on the link is in contigious order
+	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Check that satellites on the link is in contigious order
 		bool endOfSat = false;                                      // if not there must be a general failure
 		if (!satLinkInfo->satStatus[i].remoteCrcErr) {
 			endOfSat = true;
-			//Serial.printf("EndSatelite %d\n", i);
+			//Serial.printf("EndSatellite %d\n", i);
 		}
 		if (satLinkInfo->satStatus[i].remoteCrcErr && endOfSat) {
 			satLinkInfo->noOfSats = 0;
@@ -755,67 +773,65 @@ satErr_t sateliteLink::satLinkDiscover(void) {
 		}
 	}
 
-	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Check and set numbers of satelites on the link
+	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Check and set numbers of satellites on the link
 		satLinkInfo->noOfSats = i;
 		if (!satLinkInfo->satStatus[i].remoteCrcErr)
 			break;
 	}
-	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Stop CRC inversion for all satelites
-    //Serial.printf("Autodiscover is disabling CRC invert");
+	//Serial.printf("Discovered %i satellites\n", satLinkInfo->noOfSats);
+	for (uint8_t i = 0; i < MAX_NO_OF_SAT_PER_CH + 1; i++) {        // Stop CRC inversion for all satellites
+		//Serial.printf("Autodiscover is disabling CRC invert for satellite %i\n", i);
 		satLinkInfo->txSatStruct[i].invServerCrc = false;
 		satLinkInfo->txSatStruct[i].dirty = true;
 	}
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-	for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {           // Create discovered satelites
-		//Serial.printf("Creating satelite %d\n", i);
-		satLinkInfo->sateliteHandle[i] = new satelite(this, i);
+	for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {           // Create discovered satellites
+		//Serial.printf("Creating satellite %d\n", i);
+		//satLinkInfo->satelliteHandle[i] = new satellite(this, i);
 		if (satLinkInfo->satDiscoverCb != NULL) {
-			satLinkInfo->satDiscoverCb(satLinkInfo->sateliteHandle[i], satLinkInfo->address, i, true, satLinkInfo->satDiscoverCbMetadata);
-			//Serial.printf("Sent a discovery callback message for satelite %d\n", i);
+			satLinkInfo->satDiscoverCb(satLinkInfo->satelliteHandle[i], satLinkInfo->address, i, true, satLinkInfo->satDiscoverCbMetadata);
+			//Serial.printf("Sent a discovery callback message for satellite %d\n", i);
 		}
 		//else
-			//Serial.printf("Could not Send a discovery callback message for satelite %d, no callback registered\n", i);
+			//Serial.printf("Could not Send a discovery callback message for satellite %d, no callback registered\n", i);
 	}
-
-	if (satLinkInfo->noOfSats) {                                     // If satelites were discover - Opstate deblock the link
+	if (satLinkInfo->noOfSats) {                                     // If satellites were discover - Opstate deblock the link
 		opDeBlock(SAT_OP_FAIL);
 		opDeBlock(SAT_OP_INIT);
-		//Serial.printf("FOUND SATELITES\n");
+		//Serial.printf("FOUND SATELLITES\n");
 	}
 	else {
-		//Serial.printf("DID NOT FIND ANY SATELITES\n");
+		//Serial.printf("DID NOT FIND ANY SATELLITES\n");
 		opBlock(SAT_OP_FAIL);
 		opDeBlock(SAT_OP_INIT);
 	}
-	//Serial.printf("End discovery, %d Satelites discovered\n", satLinkInfo->noOfSats);
+	//Serial.printf("End discovery, %d Satellites discovered\n", satLinkInfo->noOfSats);
 	return (returnCode(SAT_OK, 0));
 }
 
-/*sateliteLink satLinkStartScan*/
-satErr_t sateliteLink::satLinkStartScan(void) {
+/*satelliteLink satLinkStartScan*/
+satErr_t satelliteLink::satLinkStartScan(void) {
 	BaseType_t taskRc;
-
 	if (satLinkInfo->scan == true)                                   // Check if linkscanning already is active
 		return (returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
 
 	taskRc = xTaskCreatePinnedToCore(                               // Start the link scanning task
 		satLinkScan,                                                // Task function
 		"satLinkScan",                                              // Task function name reference
-		6 * 1024,                                                   // Stack size
+		10 * 1024,                                                   // Stack size
 		this,                                                       // Parameter passing
 		satLinkInfo->pollTaskPrio,                                  // Priority 0-24, higher is more
 		&(satLinkInfo->scanTaskHandle),                             // Task handle
 		satLinkInfo->pollTaskCore);                                 // Task core
-
 	if (taskRc != pdPASS)
 		return (returnCode(SAT_ERR_SCANTASK_ERR, 0));
 	satLinkInfo->scan = true;
 	return (returnCode(SAT_OK, 0));
 }
 
-/*sateliteLink satLinkStopScan*/
-satErr_t sateliteLink::satLinkStopScan(void) {
+/*satelliteLink satLinkStopScan*/
+satErr_t satelliteLink::satLinkStopScan(void) {
 	if (satLinkInfo->scan == false)                                 // Check if link scan already is active
 		return (returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
   vTaskDelete(satLinkInfo->scanTaskHandle);                       // Stop the link scanning task
@@ -823,8 +839,8 @@ satErr_t sateliteLink::satLinkStopScan(void) {
 	return (returnCode(SAT_OK, 0));
 }
 
-void sateliteLink::satLinkScan(void* satLinkObj) {
-	satLinkInfo_t* satLinkInfo = ((sateliteLink*)satLinkObj)->satLinkInfo;
+void satelliteLink::satLinkScan(void* satLinkObj) {
+	satLinkInfo_t* satLinkInfo = ((satelliteLink*)satLinkObj)->satLinkInfo;
 	int64_t t0;
 	bool rxSymbolErr = false;
 	bool rxDataSizeErr = false;
@@ -834,68 +850,64 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 	uint8_t index = 0;
 	uint8_t crcCalc;
 	int64_t nextTime;
-
 	while (true) {                                                   // Link scan loop
 		t0 = esp_timer_get_time();
-    //Serial.printf("satLinkInfo->noOfSats: %d\n", satLinkInfo->noOfSats);
+		//Serial.printf("satLinkInfo->noOfSats: %d\n", satLinkInfo->noOfSats);
+		if (satLinkInfo->satLinkScanCb)
+			satLinkInfo->satLinkScanCb(satLinkInfo->satLinkScanCbMetadata);
 		xSemaphoreTake(satLinkInfo->actUpdateLock, portMAX_DELAY);
-		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {       // Populate the TX structs with data from all existing satelites
+		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {       // Populate the TX structs with data from all existing satellites
 			//for (uint8_t i = 0; i < 1; i++) {
-			//Serial.printf("Satelite %d, Inv Server CRC Cmd: %s\n", i, satLinkInfo->txSatStruct[i].invServerCrc ? "true" : "false");                        
+			//Serial.printf("Satellite %d, Inv Server CRC Cmd: %s\n", i, satLinkInfo->txSatStruct[i].invServerCrc ? "true" : "false");                        
 			if (i == 0)
-				satLinkInfo->txSatStruct[i].startMark = 0x01;       // Satelite 0 should have start mark set
+				satLinkInfo->txSatStruct[i].startMark = 0x01;       // Satellite 0 should have start mark set
 			else
 				satLinkInfo->txSatStruct[i].startMark = 0x00;
-
 			if (satLinkInfo->clientCrcTst[i])
 				//Serial.printf("Client CRC Test status for Sat %d: %d\n", i, satLinkInfo->clientCrcTst[i]);
-
 			if (satLinkInfo->serverCrcTst[i] != SAT_CRC_TEST_ACTIVE && satLinkInfo->serverCrcTst[i] != SAT_CRC_TEST_INACTIVE)
 				satLinkInfo->serverCrcTst[i]--;                    // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual CRC errors
 			if (satLinkInfo->clientCrcTst[i] != SAT_CRC_TEST_ACTIVE && satLinkInfo->clientCrcTst[i] != SAT_CRC_TEST_INACTIVE)
 				satLinkInfo->clientCrcTst[i]--;                    // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual CRC errors
 			if (satLinkInfo->wdTst[i] != SAT_WD_TEST_ACTIVE && satLinkInfo->wdTst[i] != SAT_WD_TEST_INACTIVE)
 				satLinkInfo->wdTst[i]--;                           // Decrease from TEST DEACTIVATING to TEST INACTIVE to filter any residual watchdog errors
-			if (satLinkInfo->txSatStruct[i].dirty == true) {        // Only update the TX struct if there is new satelite data
-				//Serial.printf("Actmode[3] is: %d, ActVal[3] is: %d \n", satLinkInfo->txSatStruct[i].actMode[3], satLinkInfo->txSatStruct[i].actVal[3]);
+			if (satLinkInfo->txSatStruct[i].dirty == true) {        // Only update the TX struct if there is new satellite data
+				//Serial.printf("Satellite: %i, Actmode[] is: [%d,%d,%d,%d] , ActVal[] is: [%d,%d,%d,%d] \n", i, satLinkInfo->txSatStruct[i].actMode[0], satLinkInfo->txSatStruct[i].actMode[1], satLinkInfo->txSatStruct[i].actMode[2], satLinkInfo->txSatStruct[i].actMode[3], satLinkInfo->txSatStruct[i].actVal[0], satLinkInfo->txSatStruct[i].actVal[1], satLinkInfo->txSatStruct[i].actVal[2], satLinkInfo->txSatStruct[i].actVal[3]);
 				if (satLinkInfo->txSatStruct[i].invServerCrc) {
 					//Serial.printf("Server CRC Inv ordered\n");
-					satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a server CRC test
+					satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satellite has ordered a server CRC test
 				}
 				else if (!satLinkInfo->txSatStruct[i].invServerCrc && satLinkInfo->serverCrcTst[i] == SAT_CRC_TEST_ACTIVE)
-					satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satelite ceased ordered for server CRC test
-
+					satLinkInfo->serverCrcTst[i] = SAT_CRC_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satellite ceased ordered for server CRC test
 				if (satLinkInfo->txSatStruct[i].invClientCrc) {
 					//Serial.printf("Client CRC Inv ordered for sat %d\n", i);
-					satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a client CRC test
+					satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_ACTIVE;// Set TEST ACTIVE as the satellite has ordered a client CRC test
 					satLinkInfo->txSatStruct[i].cmdInvCrc = true;
 				}
 				else if (!satLinkInfo->txSatStruct[i].invClientCrc && satLinkInfo->clientCrcTst[i] == SAT_CRC_TEST_ACTIVE) {
 					//Serial.printf("Client CRC Inv ceased for sat %d\n", i);
-					satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_DEACTIVATING;// Set TEST DEACTIVATING as the satelite ceased ordered for client CRC test
+					satLinkInfo->clientCrcTst[i] = SAT_CRC_TEST_DEACTIVATING;// Set TEST DEACTIVATING as the satellite ceased ordered for client CRC test
 					satLinkInfo->txSatStruct[i].cmdInvCrc = false;
 				}
-
 				if (satLinkInfo->txSatStruct[i].setWdErr) {
 					//Serial.printf("WD err ordered\n");
-					satLinkInfo->wdTst[i] = SAT_WD_TEST_ACTIVE;// Set TEST ACTIVE as the satelite has ordered a server CRC test
+					satLinkInfo->wdTst[i] = SAT_WD_TEST_ACTIVE;// Set TEST ACTIVE as the satellite has ordered a server CRC test
 					satLinkInfo->txSatStruct[i].cmdWdErr = true;
 				}
 				else if (!satLinkInfo->txSatStruct[i].setWdErr && satLinkInfo->wdTst[i] == SAT_WD_TEST_ACTIVE) {
-					satLinkInfo->wdTst[i] = SAT_WD_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satelite has ceased order for watchdog test
+					satLinkInfo->wdTst[i] = SAT_WD_TEST_DEACTIVATING; // Set TEST DEACTIVATING as the satellite has ceased order for watchdog test
 					satLinkInfo->txSatStruct[i].cmdWdErr = false;
 				}
-
 				if (satLinkInfo->txSatStruct[i].enable)
 					satLinkInfo->txSatStruct[i].cmdEnable = 0x01;
 				else
 					satLinkInfo->txSatStruct[i].cmdEnable = 0x00;
-				populateSatLinkBuff(&satLinkInfo->txSatStruct[i], &satLinkInfo->txSatBuff[i * 8]); // Poulate the linkbuffer with ne satelite TX data
-				//Serial.printf("IvertCRC for satelite %d : %X\n", i, satLinkInfo->txSatStruct[i].invServerCrc == 0x01);
+				populateSatLinkBuff(&satLinkInfo->txSatStruct[i], &satLinkInfo->txSatBuff[i * 8]); // Poulate the linkbuffer with ne satellite TX data
+				//Serial.printf("IvertCRC for satellite %d : %X\n", i, satLinkInfo->txSatStruct[i].invServerCrc == 0x01);
 				crc(&satLinkInfo->txSatBuff[i * 8 + SATBUF_CRC_BYTE_OFFSET], &satLinkInfo->txSatBuff[i * 8], // and calculate the CRC checksum
 					8, i, (satLinkInfo->txSatStruct[i].invServerCrc == 0x01));
 			}
-			//Serial.printf("Transmitbuffer for Satelite %d : ", i);
+			//Serial.printf("Transmitbuffer for Satellite %d : ", i);
 			//for(uint8_t m = 0; m < 8; m++)
 			//Serial.printf("%x:", satLinkInfo->txSatBuff[i * 8 + m]);
 			//Serial.printf("\n");
@@ -916,12 +928,12 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			}
 		}
 		xSemaphoreGive(satLinkInfo->actUpdateLock);
-
 		tot_rx_size = 0;
 		index = 0;
 		while (true) {                                              // Read RMT incoming data
 			items = (rmt_item32_t*)xRingbufferReceive(satLinkInfo->rb, &rx_size, 1);
 			if (items == NULL) {                                    // No more data to read
+				//Serial.printf("There is no data\n");
 				if (tot_rx_size != satLinkInfo->noOfSats * 8 * 8) { // Size of read data is wrong
 					//if (tot_rx_size != 8 * 8) {
 					 rxDataSizeErr = true;
@@ -931,7 +943,9 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 				else
 					break;
 			}
-			else {                                                  // Received data
+			else {
+				//Serial.printf("There is data\n");
+																	// Received data
 				tot_rx_size += rx_size / 4;                         // Decode the read data
 				if (ws28xx_rmt_rx_translator(items, &satLinkInfo->rxSatBuff[index * 8], rx_size / 4)) { // Check if symbol error
 					vRingbufferReturnItem(satLinkInfo->rb, (void*)items);
@@ -941,9 +955,9 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 					break;
 				}
 				vRingbufferReturnItem(satLinkInfo->rb, (void*)items); // No new sensor data, return the ringbuffer item
-				//Serial.printf("Receivebuffer for Satelite %d : ", index);
+				//Serial.printf("Receivebuffer for Satellite %d : ", index);
 				//for(uint8_t m = 0; m < 8; m++)
-				//Serial.printf("%x:", satLinkInfo->rxSatBuff[index * 8 + m]);
+					//Serial.printf("%x:", satLinkInfo->rxSatBuff[index * 8 + m]);
 				//Serial.printf("\n");
 			}
 			index++;
@@ -951,7 +965,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 		//titemstop = esp_timer_get_time()- titem;
 		//Serial.printf("Took %d uS to retrieve items \n", titemstop);
 
-		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {       // Check received data for all satelites
+		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {       // Check received data for all satellites
 			bool senseChange;
 			bool statusBad;
 			bool rxCrcErr;
@@ -959,7 +973,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			bool wdErr;
 
 			//Serial.printf("i=%d\n", i);
-			senseChange = populateSatWireStruct(&satLinkInfo->rxSatStruct[i], &satLinkInfo->rxSatBuff[i * 8]); // Populate the Satelite rx struct
+			senseChange = populateSatWireStruct(&satLinkInfo->rxSatStruct[i], &satLinkInfo->rxSatBuff[i * 8]); // Populate the Satellite rx struct
 			crc(&crcCalc, &satLinkInfo->rxSatBuff[i * 8], 8, i, false);  // Check iff correct incomming RX buffer CRC
 			rxCrcErr = (crcCalc != satLinkInfo->rxSatStruct[i].crc);
 			remoteCrcErr = (satLinkInfo->rxSatStruct[i].fbRemoteCrcErr == 0x01); // Check remote CRC indication
@@ -967,10 +981,10 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			wdErr = (satLinkInfo->rxSatStruct[i].fbWdErr == 0x01);  // Check Watchdog errors
 			//Serial.printf("%s , %s\n", satLinkInfo->satStatus[i].remoteCrcErr ? "true" : "false", remoteCrcErr ? "true" : "false");
 			//if (satLinkInfo->satStatus[i].remoteCrcErr != remoteCrcErr)
-			//printf("Remote CRC error status changed for satelite %d, now %s\n", i, remoteCrcErr ? "true" : "false");
+			//printf("Remote CRC error status changed for satellite %d, now %s\n", i, remoteCrcErr ? "true" : "false");
 			statusBad = (rxDataSizeErr || rxSymbolErr || rxCrcErr || remoteCrcErr || wdErr);
-			//Serial.printf("Satelite %d Sensors: %x\n", i, satLinkInfo->rxSatStruct[i].sensorVal);
-			//Serial.printf("Satelite %d Status - rxCrcErr: %s, remoteCrcErr: %s, wdErr: %s \n", i, rxCrcErr ? "true" : "false", remoteCrcErr ? "true" : "false"  , wdErr ? "true" : "false");
+			//Serial.printf("Satellite %d Sensors: %x\n", i, satLinkInfo->rxSatStruct[i].sensorVal);
+			//Serial.printf("Satellite %d Status - rxCrcErr: %s, remoteCrcErr: %s, wdErr: %s \n", i, rxCrcErr ? "true" : "false", remoteCrcErr ? "true" : "false"  , wdErr ? "true" : "false");
 			if (!statusBad) {                                        // If any errors - update performance counters
 				if (!satLinkInfo->satStatus[i].dirty){
 					satLinkInfo->satStatus[i].rxDataSizeErr = false;
@@ -982,7 +996,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			}
 			else {
 				//Serial.printf("Status is bad for %d\n", i);
-				xSemaphoreTake(satLinkInfo->performanceCounterLock, portMAX_DELAY);
+				//xSemaphoreTake(satLinkInfo->performanceCounterLock, portMAX_DELAY);
 				satLinkInfo->performanceCounters.rxDataSizeErr += rxDataSizeErr;
 				satLinkInfo->performanceCounters.rxDataSizeErrSec += rxDataSizeErr;
 				satLinkInfo->performanceCounters.rxSymbolErr += rxSymbolErr;
@@ -1000,14 +1014,14 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 					satLinkInfo->performanceCounters.wdErr += wdErr;
 					satLinkInfo->performanceCounters.wdErrSec += wdErr;
 				}
-				xSemaphoreGive(satLinkInfo->performanceCounterLock);
+				//xSemaphoreGive(satLinkInfo->performanceCounterLock);
 
 				//Serial.printf("Bad status:  dirty %i, rxDataSizeErr %i, rxSymbolErr %i, rxCrcErr %i, remoteCrcErr %i, wdErr %i\n", satLinkInfo->satStatus[i].dirty, rxDataSizeErr, rxSymbolErr, rxCrcErr, remoteCrcErr, wdErr);
 				if (!satLinkInfo->satStatus[i].dirty) {               // If satStatus has been read by the receiver, clear all status data and fill in new
 					satLinkInfo->satStatus[i].rxDataSizeErr = rxDataSizeErr;
 					satLinkInfo->satStatus[i].rxSymbolErr = rxSymbolErr;
 					satLinkInfo->satStatus[i].rxCrcErr = rxCrcErr;
-					//Serial.printf("Dirty - Setting satLinkInfo->satStatus[i].remoteCrcErr for satelite %d to %s\n", i, remoteCrcErr ? "Fault":"No Fault");
+					//Serial.printf("Dirty - Setting satLinkInfo->satStatus[i].remoteCrcErr for satellite %d to %s\n", i, remoteCrcErr ? "Fault":"No Fault");
 					satLinkInfo->satStatus[i].remoteCrcErr = remoteCrcErr;
 					satLinkInfo->satStatus[i].wdErr = wdErr;
 				}
@@ -1023,14 +1037,14 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 					//Serial.printf("After 2 %s , %s\n", satLinkInfo->satStatus[i].remoteCrcErr ? "true" : "false", remoteCrcErr ? "true" : "false");
 					if (!satLinkInfo->satStatus[i].wdErr)
 						satLinkInfo->satStatus[i].wdErr = wdErr;
-					//Serial.printf("Not Dirty - satLinkInfo->satStatus[i].remoteCrcErr for satelite %d to %s\n", i, satLinkInfo->satStatus[i].remoteCrcErr ? "true" : "false");
+					//Serial.printf("Not Dirty - satLinkInfo->satStatus[i].remoteCrcErr for satellite %d to %s\n", i, satLinkInfo->satStatus[i].remoteCrcErr ? "true" : "false");
 				}
 				satLinkInfo->satStatus[i].dirty = true;
-				if (satLinkInfo->sateliteHandle[i] != NULL)
-					satLinkInfo->sateliteHandle[i]->statusUpdate(&satLinkInfo->satStatus[i]);
+				if (satLinkInfo->satelliteHandle[i] != NULL)
+					satLinkInfo->satelliteHandle[i]->statusUpdate(&satLinkInfo->satStatus[i]);
 			}
-			if (senseChange && (satLinkInfo->sateliteHandle[i] != NULL) && !satLinkInfo->opState && !rxDataSizeErr && !rxSymbolErr && !rxCrcErr)
-				satLinkInfo->sateliteHandle[i]->senseUpdate(&satLinkInfo->rxSatStruct[i]);
+			if (senseChange && (satLinkInfo->satelliteHandle[i] != NULL) && !satLinkInfo->opState && !rxDataSizeErr && !rxSymbolErr && !rxCrcErr)
+				satLinkInfo->satelliteHandle[i]->senseUpdate(&satLinkInfo->rxSatStruct[i]);
 			//Serial.printf("After 3 %s , %s\n", satLinkInfo->satStatus[i].remoteCrcErr ? "true" : "false", remoteCrcErr ? "true" : "false");
 
 			rxDataSizeErr = false;
@@ -1040,7 +1054,7 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			remoteCrcErr = false;
 			wdErr = false;
 		}
-		((sateliteLink*)satLinkObj)->chkErrSec();                       // Check if errored second
+		((satelliteLink*)satLinkObj)->chkErrSec();                       // Check if errored second
 		if ((nextTime = satLinkInfo->scanInterval - ((esp_timer_get_time() - t0) / 1000)) <= 0) { // Scan timing violation, update performance counters and immediatly start a new scan
 			//Serial.printf("Overrun next time %d ms\n", nextTime);
 			//Serial.printf("Scan ended-1 took %d us\n", esp_timer_get_time() - t0);
@@ -1055,15 +1069,16 @@ void sateliteLink::satLinkScan(void* satLinkObj) {
 			vTaskDelay(nextTime / (portTICK_PERIOD_MS));
 		}
 	}
+	vTaskDelete(NULL);
 }
 
-/*sateliteLink opBlock*/
-void sateliteLink::opBlock(satOpState_t opState_p) {
-	//Serial.printf("Satelitelink OP blocked received 0x%x\n", opState_p);
-	if (!satLinkInfo->opState)                                          // If there was no earliar Opstate block, controlblock all satelites abot the block
+/*satelliteLink opBlock*/
+void satelliteLink::opBlock(satOpState_t opState_p) {
+	//Serial.printf("Satellitelink OP blocked received 0x%x\n", opState_p);
+	if (!satLinkInfo->opState)                                          // If there was no earliar Opstate block, controlblock all satellites abot the block
 		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++)
-			if (satLinkInfo->sateliteHandle[i] != NULL)
-				satLinkInfo->sateliteHandle[i]->opBlock(SAT_OP_CONTROLBOCK);
+			if (satLinkInfo->satelliteHandle[i] != NULL)
+				satLinkInfo->satelliteHandle[i]->opBlock(SAT_OP_CONTROLBOCK);
 	satLinkInfo->opState = satLinkInfo->opState | opState_p;            // Set new Opstate
 	if (satLinkInfo->satLinkStateCb != NULL)                            // call-back informing about new Opstate
 		satLinkInfo->satLinkStateCb(this, satLinkInfo->address, satLinkInfo->opState, satLinkInfo->satLinkStateCbMetadata);
@@ -1074,58 +1089,67 @@ void sateliteLink::opBlock(satOpState_t opState_p) {
 	}
 }
 
-/*sateliteLink opDeBlock*/
-void sateliteLink::opDeBlock(satOpState_t opState_p) {
-	//Serial.printf("Satelitelink OP deblocked received :0x%x\n", opState_p);
-	if (!(satLinkInfo->opState = satLinkInfo->opState & ~opState_p)) {   //If no more opBleck, control deblock all satelites and clear performance counters
+/*satelliteLink opDeBlock*/
+void satelliteLink::opDeBlock(satOpState_t opState_p) {
+	//Serial.printf("Satellitelink OP deblocked received :0x%x\n", opState_p);
+	satLinkInfo->opState = satLinkInfo->opState & ~opState_p;
+	if (!satLinkInfo->opState) {   //If no more opBleck, control deblock all satellites and clear performance counters
 		xSemaphoreTake(satLinkInfo->performanceCounterLock, portMAX_DELAY);
 		clearPerformanceCounters(&satLinkInfo->performanceCounters);
 		xSemaphoreGive(satLinkInfo->performanceCounterLock);
 		for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++)
-			if (satLinkInfo->sateliteHandle[i] != NULL)
-				satLinkInfo->sateliteHandle[i]->opDeBlock(SAT_OP_CONTROLBOCK);
+			if (satLinkInfo->satelliteHandle[i] != NULL)
+				satLinkInfo->satelliteHandle[i]->opDeBlock(SAT_OP_CONTROLBOCK);
 	}
 	if (satLinkInfo->satLinkStateCb != NULL)                            // Call-back to inform about the new Opstate
 		satLinkInfo->satLinkStateCb(this, satLinkInfo->address, satLinkInfo->opState, satLinkInfo->satLinkStateCbMetadata);
 }
 
-/*sateliteLink getOpState*/
-satOpState_t sateliteLink::getOpState(void) {
+/*satelliteLink getOpState*/
+satOpState_t satelliteLink::getOpState(void) {
 	return satLinkInfo->opState;
 }
 
-/*sateliteLink admBlock*/
-satErr_t sateliteLink::admBlock(void) {
-	if (satLinkInfo->admState == SAT_ADM_DISABLE)                       // Check if already Adm blocked
+/*satelliteLink admBlock*/
+satErr_t satelliteLink::admBlock(void) {
+	if (satLinkInfo->admState == SAT_ADM_DISABLE) {                       // Check if already Adm blocked
+		//Serial.printf("admBlock Wrong state, current state is: %i\n", satLinkInfo->admState);
 		return (returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
-	for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {               // CHeck that all satelites are Adm blocked
-		if (satLinkInfo->sateliteHandle[i]->getAdmState() != SAT_ADM_DISABLE)
+	}
+	for (uint8_t i = 0; i < satLinkInfo->noOfSats; i++) {               // CHeck that all satellites are Adm blocked
+		//Serial.printf("Checking if satellite %i is disabled \n", i);
+		if (satLinkInfo->satelliteHandle[i]->getAdmState() != SAT_ADM_DISABLE)
 			return (returnCode(SAT_ERR_DEP_BLOCK_STATUS_ERR, 0));
 	}
 	satLinkInfo->admState = SAT_ADM_DISABLE;                            // Set Link to ADM DISABLE
 	opBlock(SAT_OP_DISABLE);                                            // OP Block OP_DISABLE
+	opDeBlock(SAT_OP_ERR_SEC);
+	opDeBlock(SAT_OP_FAIL);
 	return (returnCode(SAT_OK, 0));
 }
 
-/*sateliteLink admDeBlock*/
-satErr_t sateliteLink::admDeBlock(void) {
-	if (satLinkInfo->admState == SAT_ADM_ENABLE)
+/*satelliteLink admDeBlock*/
+satErr_t satelliteLink::admDeBlock(void) {
+	if (satLinkInfo->admState == SAT_ADM_ENABLE) {
+		//Serial.printf("admDeBlock Wrong state, current state is: %i\n", satLinkInfo->admState);
 		return (returnCode(SAT_ERR_DEP_BLOCK_STATUS_ERR, 0));
+	}
 	satLinkInfo->admState = SAT_ADM_ENABLE;
 	opDeBlock(SAT_OP_DISABLE);
+	opDeBlock(SAT_OP_ERR_SEC);
+	opDeBlock(SAT_OP_FAIL);
 	return (returnCode(SAT_OK, 0));
 }
 
-/*sateliteLink getAdmState*/
-satAdmState_t sateliteLink::getAdmState(void) {
+/*satelliteLink getAdmState*/
+satAdmState_t satelliteLink::getAdmState(void) {
 	return satLinkInfo->admState;
 }
 
-/*sateliteLink chkErrSec*/
-void sateliteLink::chkErrSec(void) {
+/*satelliteLink chkErrSec*/
+void satelliteLink::chkErrSec(void) {
 	uint16_t ErrSum;
 	int64_t now;
-
 	if (!satLinkInfo->errThresHigh)
 		return;
 	ErrSum = satLinkInfo->performanceCounters.rxDataSizeErrSec +
@@ -1152,37 +1176,37 @@ void sateliteLink::chkErrSec(void) {
 	}
 }
 
-/*sateliteLink linkReEstablish*/
-void sateliteLink::linkReEstablish(TimerHandle_t timerHandle) {
-	sateliteLink* sateliteLinkObj = (sateliteLink*)pvTimerGetTimerID(timerHandle);
-	//Serial.printf("Got ReEstablishTimer, opState is: %x\n", sateliteLinkObj->satLinkInfo->opState);
-	//Serial.printf("%x, %x\n", sateliteLinkObj->satLinkInfo->opState & SAT_OP_FAIL, sateliteLinkObj->satLinkInfo->opState & SAT_OP_ERR_SEC);
+/*satelliteLink linkReEstablish*/
+void satelliteLink::linkReEstablish(TimerHandle_t timerHandle) {
+	satelliteLink* satelliteLinkObj = (satelliteLink*)pvTimerGetTimerID(timerHandle);
+	//Serial.printf("Got ReEstablishTimer, opState is: %x\n", satelliteLinkObj->satLinkInfo->opState);
+	//Serial.printf("%x, %x\n", satelliteLinkObj->satLinkInfo->opState & SAT_OP_FAIL, satelliteLinkObj->satLinkInfo->opState & SAT_OP_ERR_SEC);
 
-	if ((sateliteLinkObj->satLinkInfo->opState & SAT_OP_FAIL) != 0x00 || (sateliteLinkObj->satLinkInfo->opState & SAT_OP_ERR_SEC) != 0x00) {
+	if ((satelliteLinkObj->satLinkInfo->opState & SAT_OP_FAIL) != 0x00 || (satelliteLinkObj->satLinkInfo->opState & SAT_OP_ERR_SEC) != 0x00) {
 		//Serial.printf("Restarting discovery\n");
-		sateliteLinkObj->satLinkDiscover();
+		satelliteLinkObj->satLinkDiscover();
 	}
 }
-/*===================================================== END Class sateliteLink =================================================================*/
+/*===================================================== END Class satelliteLink =================================================================*/
 
 
 
 /*==============================================================================================================================================*/
-/* Class: satelite                                                                                                                              */
-/* Purpose: The satelite class is responsible for the higher-level functionality of each satelite (OSI L4-L7). Each satelite class object gets  */
-/* created through its parent sateliteLink class object after the sateliteLink Auto discovery process, Satelite users get informed about the    */
-/* existence of a satelite through call-backs registered through the parent sateliteLink class object.The satelite class objects have methods   */
-/* for setting the actuators, receiving sensor values, and supervising the functionality and the integrity of each satelite.                    */
+/* Class: satellite                                                                                                                              */
+/* Purpose: The satellite class is responsible for the higher-level functionality of each satellite (OSI L4-L7). Each satellite class object gets  */
+/* created through its parent satelliteLink class object after the satelliteLink Auto discovery process, Satellite users get informed about the    */
+/* existence of a satellite through call-backs registered through the parent satelliteLink class object.The satellite class objects have methods   */
+/* for setting the actuators, receiving sensor values, and supervising the functionality and the integrity of each satellite.                    */
 /* Methods: See README.md                                                                                                                       */
-/* Data structures: See Satelite.h                                                                                                              */
+/* Data structures: See Satellite.h                                                                                                              */
 /*==============================================================================================================================================*/
 
 /***** PUBLIC MEMBERS *****/
 
-/*satelite satelite*/
-satelite::satelite(sateliteLink* satLink_p, uint8_t satAddr_p) {
-	//Serial.printf("Creating Satelite %d\n", satAddr_p);
-	satInfo = new satInfo_t;                                            // Creat the satelite data structure
+/*satellite satellite*/
+satellite::satellite(satelliteLink* satLink_p, uint8_t satAddr_p) {
+	//Serial.printf("Creating Satellite %d\n", satAddr_p);
+	satInfo = new satInfo_t;                                            // Creat the satellite data structure
 	satInfo->performanceCounterLock = xSemaphoreCreateMutex();          // Lock needed for performance data (Read-Modify-Write)
 	satInfo->address = satAddr_p;                                       // Initiat the data structure with initial and default values
 	satInfo->satLinkParent = satLink_p;
@@ -1202,7 +1226,9 @@ satelite::satelite(sateliteLink* satLink_p, uint8_t satAddr_p) {
 	satInfo->oneSecTimerHandle = xTimerCreate("oneSecTimer", pdMS_TO_TICKS(1000), pdTRUE, this, &chkErrSec);
 	satInfo->selfTestTimerHandle = xTimerCreate("selftestTimer", pdMS_TO_TICKS(satInfo->satLinkParent->satLinkInfo->scanInterval * 50), pdFALSE, this, &selfTestTimeout);
 	satInfo->stateCb = NULL;
+	satInfo->stateCbMetadata = NULL;
 	satInfo->senseCb = NULL;
+	satInfo->senseCbMetadata = NULL;
 	clearPerformanceCounters(&satInfo->performanceCounters);
 	satInfo->performanceCounters.testRemoteCrcErr = 0;
 	satInfo->performanceCounters.testRxCrcErr = 0;
@@ -1219,56 +1245,60 @@ satelite::satelite(sateliteLink* satLink_p, uint8_t satAddr_p) {
 	satInfo->selfTestCb = NULL;
 }
 
-/*satelite ~satelite*/
-satelite::~satelite(void) {
+/*satellite ~satellite*/
+satellite::~satellite(void) {
 	for (uint8_t i = 0; i < 8; i++)
 		xTimerDelete(satInfo->sensors[i].timerHandle, 10);
 	xTimerDelete(satInfo->oneSecTimerHandle, 10);
 	xTimerDelete(satInfo->selfTestTimerHandle, 10);
 	vSemaphoreDelete(satInfo->performanceCounterLock);
+	//delete satellite objects
 	delete satInfo;
 }
 
-/*satelite enableSat*/
-satErr_t satelite::enableSat(void) {
+/*satellite enableSat*/
+satErr_t satellite::enableSat(void) {
 	return(returnCode(admDeBlock(), 0));
 }
 
-/*satelite disableSat*/
-satErr_t satelite::disableSat(void) {
+/*satellite disableSat*/
+satErr_t satellite::disableSat(void) {
 	return(returnCode(admBlock(), 0));
 }
 
-/*satelite setErrTresh*/
-void satelite::setErrTresh(uint16_t errThresHigh_p, uint16_t errThresLow_p) {
+/*satellite setErrTresh*/
+void satellite::setErrTresh(uint16_t errThresHigh_p, uint16_t errThresLow_p) {
 	satInfo->errThresHigh = errThresHigh_p;
 	satInfo->errThresLow = errThresLow_p;
 }
 
-/*satelite setErrTresh*/
-satErr_t satelite::setSatActMode(actMode_t actMode_p, uint8_t actIndex_p) {
+/*satellite setSatActMode*/
+satErr_t satellite::setSatActMode(actMode_t actMode_p, uint8_t actIndex_p) {
 	if (actIndex_p > 3 || actMode_p > 5)
 		return(returnCode(SAT_ERR_PARAM_ERR, 0));
-	satInfo->actMode[actIndex_p] = actMode_p;                           // Inform the satelite link about the new act mode through shared mem
+	satInfo->actMode[actIndex_p] = actMode_p;                           // Inform the satellite link about the new act mode through shared mem
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].actMode[actIndex_p] = actMode_p;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	return(returnCode(SAT_OK, 0));
 }
 
-/*satelite setSatActVal*/
-satErr_t satelite::setSatActVal(uint8_t actVal_p, uint8_t actIndex_p) {
-	if (actIndex_p > (NO_OF_ACT - 1))
+/*satellite setSatActVal*/
+satErr_t satellite::setSatActVal(uint8_t actVal_p, uint8_t actIndex_p) {
+	//Serial.printf("Seting actuator %i value to %i\n", actIndex_p, actVal_p);
+	if (actIndex_p > (NO_OF_ACT - 1)){
+		//Serial.printf("satellite::setSatActVal: Satellite port %i out of bounds\n", actIndex_p);
 		return(returnCode(SAT_ERR_PARAM_ERR, 0));
+	}
 	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
-	satInfo->actVal[actIndex_p] = actVal_p;                             // Inform the satelite link about the new act value through shared mem
+	satInfo->actVal[actIndex_p] = actVal_p;                             // Inform the satellite link about the new act value through shared mem
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].actVal[actIndex_p] = actVal_p;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	xSemaphoreGive(satInfo->satLinkParent->satLinkInfo->actUpdateLock);
 	return(returnCode(SAT_OK, 0));
 }
 
-/*satelite setSenseFilter*/
-satErr_t satelite::setSenseFilter(uint16_t senseFilter_p, uint8_t senseIndex_p) {
+/*satellite setSenseFilter*/
+satErr_t satellite::setSenseFilter(uint16_t senseFilter_p, uint8_t senseIndex_p) {
 	if (senseIndex_p > 7 || senseFilter_p == 0)                                                                                   // 0 ms filter is not allowed
 		return(returnCode(SAT_ERR_PARAM_ERR, 0));
 	satInfo->sensors[senseIndex_p].filterTime = senseFilter_p;
@@ -1277,62 +1307,63 @@ satErr_t satelite::setSenseFilter(uint16_t senseFilter_p, uint8_t senseIndex_p) 
 	return(returnCode(SAT_OK, 0));
 }
 
-/*satelite satRegSenseCb*/
-void satelite::satRegSenseCb(satSenseCb_t fn) {
+/*satellite satRegSenseCb*/
+void satellite::satRegSenseCb(satSenseCb_t fn, void* metaData_p) {
 	satInfo->senseCb = fn;
+	satInfo->senseCbMetadata = metaData_p;
 	for (uint8_t i = 0; i < 8; i++) {
-		satInfo->senseCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->sensors[i].address, satInfo->sensors[i].filteredSensorVal);
+		satInfo->senseCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->sensors[i].address, satInfo->sensors[i].filteredSensorVal, satInfo->senseCbMetadata);
 	}
 }
 
-/*satelite satUnRegSenseCb*/
-void satelite::satUnRegSenseCb(void) {
+/*satellite satUnRegSenseCb*/
+void satellite::satUnRegSenseCb(void) {
 	satInfo->senseCb = NULL;
+	satInfo->senseCbMetadata = NULL;
 }
 
-/*satelite satSelfTest*/
-satErr_t satelite::satSelfTest(selfTestCb_t selfTestCb_p) {
-	//Serial.printf("Entering Selftest for satelite: %d\n", satInfo->address);
+/*satellite satSelfTest*/
+satErr_t satellite::satSelfTest(selfTestCb_t selfTestCb_p) {
+	//Serial.printf("Entering Selftest for satellite: %d\n", satInfo->address);
 	if (satInfo->opState) {
-		//Serial.printf("Self-test, satelite %d in wrong state\n", satInfo->address);
+		//Serial.printf("Self-test, satellite %d in wrong state\n", satInfo->address);
 		return(returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
 	}
-	//Serial.printf("Satelite test state: %d, Link satelite test state: %d\n", satInfo->selftestPhase, satInfo->satLinkParent->satLinkInfo->satSelfTest);
+	//Serial.printf("Satellite test state: %d, Link satellite test state: %d\n", satInfo->selftestPhase, satInfo->satLinkParent->satLinkInfo->satSelfTest);
 	if (satInfo->selftestPhase != NO_TEST || satInfo->satLinkParent->satLinkInfo->satSelfTest != NO_TEST) {
-		//Serial.printf("Self-test, satelite %d self test busy\n", satInfo->address);
+		//Serial.printf("Self-test, satellite %d self test busy\n", satInfo->address);
 		return(returnCode(SAT_ERR_BUSY_ERR, 0));
 	}
-	//Serial.printf("Self-test, satelite %d self test NOT busy - starting\n", satInfo->address);
+	//Serial.printf("Self-test, satellite %d self test NOT busy - starting\n", satInfo->address);
 	satInfo->selfTestCb = selfTestCb_p;
 	genServerCrcErr();                              // This will initiate the sequence of all self tests
 	return SAT_OK;
 }
 
-/*satelite getSenseVal*/
-bool satelite::getSenseVal(uint8_t senseAddr) {
+/*satellite getSenseVal*/
+bool satellite::getSenseVal(uint8_t senseAddr) {
 	return satInfo->sensors[senseAddr].filteredSensorVal;
 }
 
-/*satelite satRegStateCb*/
-void satelite::satRegStateCb(satStateCb_t fn, void* p_metadata) {
+/*satellite satRegStateCb*/
+void satellite::satRegStateCb(satStateCb_t fn, void* p_metadata) {
 	satInfo->stateCb = fn;
 	satInfo->stateCbMetadata = p_metadata;
-
 	satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState, satInfo->stateCbMetadata);
 }
 
-/*satelite satUnRegStateCb*/
-void satelite::satUnRegStateCb(void) {
+/*satellite satUnRegStateCb*/
+void satellite::satUnRegStateCb(void) {
 	satInfo->stateCb = NULL;
 }
 
-/*satelite getAddress*/
-uint8_t satelite::getAddress(void) {
+/*satellite getAddress*/
+uint8_t satellite::getAddress(void) {
 	return satInfo->address;
 }
 
-/*satelite senseUpdate*/
-void satelite::senseUpdate(satWire_t* rxData_p) {
+/*satellite senseUpdate*/
+void satellite::senseUpdate(satWire_t* rxData_p) {
 	//Serial.printf("Got a sensor update: 0x%x\n", rxData_p->sensorVal);
 	for (uint8_t i = 0; i < 8; i++) {
 		satInfo->sensors[i].currentSensorVal = (rxData_p->sensorVal & 0b00000001 << i) > 0;
@@ -1352,11 +1383,11 @@ void satelite::senseUpdate(satWire_t* rxData_p) {
 	}
 }
 
-/*satelite statusUpdate*/
-void satelite::statusUpdate(satStatus_t* status_p) {                    // New status received from the link through shared mem
+/*satellite statusUpdate*/
+void satellite::statusUpdate(satStatus_t* status_p) {                    // New status received from the link through shared mem
 	if (status_p->dirty != true)                                        // No new status after all
 		return;
-	//Serial.printf("Got a Satelite status update with remoteCrc: %s, rxCrc %s, wdErr %s, serverCrcTest %d, clientCrcTest %d, wdTest %d\n", status_p->remoteCrcErr ? "true" : "false", status_p->rxCrcErr ? "true" : "false", status_p->wdErr ? "true" : "false", satInfo->serverCrcTest, satInfo->clientCrcTest,  satInfo->wdTest);
+	//Serial.printf("Got a Satellite status update with remoteCrc: %s, rxCrc %s, wdErr %s, serverCrcTest %d, clientCrcTest %d, wdTest %d\n", status_p->remoteCrcErr ? "true" : "false", status_p->rxCrcErr ? "true" : "false", status_p->wdErr ? "true" : "false", satInfo->serverCrcTest, satInfo->clientCrcTest,  satInfo->wdTest);
 	xSemaphoreTake(satInfo->performanceCounterLock, portMAX_DELAY);     // Update performance counters according to new status
 	if (status_p->remoteCrcErr && (satInfo->serverCrcTest == SAT_CRC_TEST_INACTIVE)) {
 		satInfo->performanceCounters.remoteCrcErr++;
@@ -1366,7 +1397,7 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 		//Serial.printf("Counting remoteCrc test counters\n");
 		satInfo->performanceCounters.testRemoteCrcErr++;
 		satInfo->serverCrcTest = SAT_CRC_TEST_DEACTIVATING;
-		//Serial.printf("Satelite selftest is disabling Server CRC invert\n");
+		//Serial.printf("Satellite selftest is disabling Server CRC invert\n");
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invServerCrc = false;
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
@@ -1383,7 +1414,7 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 		//Serial.printf("Counting rxCrc test counters\n");
 		satInfo->performanceCounters.testRxCrcErr++;
 		satInfo->clientCrcTest = SAT_CRC_TEST_DEACTIVATING;
-		//Serial.printf("Satelite UPDATE - Satelite selftest is disabling Client CRC invert for Sat%d\n", satInfo->address);
+		//Serial.printf("Satellite UPDATE - Satellite selftest is disabling Client CRC invert for Sat%d\n", satInfo->address);
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invClientCrc = false;
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
@@ -1400,7 +1431,7 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 		//Serial.printf("Counting wdErr test counters\n");
 		satInfo->performanceCounters.testWdErr++;
 		satInfo->wdTest = SAT_WD_TEST_DEACTIVATING;
-		//Serial.printf("Satelite selftest is disabling WD test\n");
+		//Serial.printf("Satellite selftest is disabling WD test\n");
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].setWdErr = false;
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
@@ -1420,64 +1451,73 @@ void satelite::statusUpdate(satStatus_t* status_p) {                    // New s
 	status_p->dirty = false;
 }
 
-/*satelite admBlock*/
-satErr_t satelite::admBlock(void) {
+/*satellite admBlock*/
+satErr_t satellite::admBlock(void) {
 	if (satInfo->admState == SAT_ADM_DISABLE) {
-		//Serial.printf("admBlock Wrong state\n");
+		//Serial.printf("admBlock Wrong state, current state is: %i\n", satInfo->admState);
 		return (returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
 	}
 	assert(xTimerStop(satInfo->oneSecTimerHandle, 10) != pdFAIL);       // Stop the errSec supervision
 	satInfo->admState = SAT_ADM_DISABLE;
 	opBlock(SAT_OP_DISABLE);                                            // OpBlock
+	opDeBlock(SAT_OP_ERR_SEC);
+	opDeBlock(SAT_OP_FAIL);
 	//Serial.printf("admBlock OK\n");
 	return (returnCode(SAT_OK, 0));
 }
 
-/*satelite admDeBlock*/
-satErr_t satelite::admDeBlock(void) {
+/*satellite admDeBlock*/
+satErr_t satellite::admDeBlock(void) {
 	uint8_t tmpSensorVal;
-	if (satInfo->admState == SAT_ADM_ENABLE)
+	if (satInfo->admState == SAT_ADM_ENABLE) {
+		//Serial.printf("admDeBlock Wrong state, current state is: %i\n", satInfo->admState);
 		return (returnCode(SAT_ERR_WRONG_STATE_ERR, 0));
-	if (satInfo->satLinkParent->getAdmState() != SAT_ADM_ENABLE)        // Check that the parent link is Adm deblocked
+	}
+	if (satInfo->satLinkParent->getAdmState() != SAT_ADM_ENABLE) {        // Check that the parent link is Adm deblocked
+		//Serial.printf("admDeBlock Parent in wrong state\n");
 		return (returnCode(SAT_ERR_DEP_BLOCK_STATUS_ERR, 0));
+	}
 	assert(xTimerStart(satInfo->oneSecTimerHandle, 10) != pdFAIL);      // Start the errSec supervision
 	satInfo->satLinkParent->getSensorValRaw(satInfo->address, &tmpSensorVal);
-
 	for (uint8_t i = 0; i < 8; i++) {
 		satInfo->sensors[i].currentSensorVal = (tmpSensorVal & 0b00000001 << i) > 0;
 		satInfo->sensors[i].filteredSensorVal = satInfo->sensors[i].currentSensorVal;
 		if (satInfo->senseCb != NULL)                                       // Call-back with current filtered sensor values
-			satInfo->senseCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->sensors[i].address, satInfo->sensors[i].filteredSensorVal);
+			satInfo->senseCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->sensors[i].address, satInfo->sensors[i].filteredSensorVal, satInfo->senseCbMetadata);
 	}
-	opDeBlock(SAT_OP_DISABLE);                                            // Opblock
+	opDeBlock(SAT_OP_DISABLE);                                            // Opdeblock
+	opDeBlock(SAT_OP_ERR_SEC);
+	opDeBlock(SAT_OP_FAIL);
 	satInfo->admState = SAT_ADM_ENABLE;
 	return (returnCode(SAT_OK, 0));
 }
 
-/*satelite getAdmState*/
-satAdmState_t satelite::getAdmState(void) {
+/*satellite getAdmState*/
+satAdmState_t satellite::getAdmState(void) {
 	return satInfo->admState;
 }
 
-/*satelite opBlock*/
-void satelite::opBlock(satOpState_t opState_p) {
-	//Serial.printf("Satelite OP blocked received for satelite %d, requesting OpState: 0x%x, previous OpState: 0x%x\n", satInfo->address, opState_p, satInfo->opState);
-	if (!satInfo->opState) {
-		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].enable = false; // Disable the satelite
+/*satellite opBlock*/
+void satellite::opBlock(satOpState_t opState_p) {
+	//Serial.printf("Satellite OP blocked received for satellite %d, requesting OpState: 0x%x, previous OpState: 0x%x\n", satInfo->address, opState_p, satInfo->opState);
+	satInfo->opState = satInfo->opState | opState_p;
+	if ((satInfo->opState & SAT_OP_INIT) || (satInfo->opState & SAT_OP_DISABLE) || (satInfo->opState & SAT_OP_CONTROLBOCK)) {
+		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].enable = false; // Disable the satellite
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
 	}
-	satInfo->opState = satInfo->opState | opState_p;
-	if (satInfo->stateCb != NULL)                                       // Call-back with the new Opstate
+	if (satInfo->stateCb != NULL) {                                       // Call-back with the new Opstate
 		satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState, satInfo->stateCbMetadata);
+	}
 }
 
-/*satelite opDeBlock*/
-void satelite::opDeBlock(satOpState_t opState_p) {
-	//Serial.printf("Satelite OP deblocked received :0x%x\n", opState_p);
-	if (!(satInfo->opState = satInfo->opState & ~opState_p)) {
+/*satellite opDeBlock*/
+void satellite::opDeBlock(satOpState_t opState_p) {
+	//Serial.printf("Satellite OP deblocked received - resetting :0x%x\n", opState_p);
+	satInfo->opState = satInfo->opState & ~opState_p;
+	if (!(satInfo->opState & ~SAT_OP_ERR_SEC & ~SAT_OP_FAIL)) {
 		while (satSelfTest(&selftestRes) == SAT_ERR_BUSY_ERR) 
 			vTaskDelay(10 / portTICK_PERIOD_MS);
-		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].enable = true; // Enable the satelite
+		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].enable = true; // Enable the satellite
 		for (uint8_t i = 0; i < NO_OF_ACT; i++)                              // Set actuator mode
 			satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].actMode[i] = satInfo->actMode[i];
 		satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].dirty = true;
@@ -1486,17 +1526,18 @@ void satelite::opDeBlock(satOpState_t opState_p) {
 	clearPerformanceCounters(&satInfo->performanceCounters);            // Clear the performance counters
 	xSemaphoreGive(satInfo->performanceCounterLock);
 	//Serial.printf("Cleared all perf counters %u\n", satInfo->performanceCounters.rxCrcErr);
-	if (satInfo->stateCb != NULL)                                       // Call-back with the new Opstate
+	if (satInfo->stateCb != NULL) {                                       // Call-back with the new Opstate
 		satInfo->stateCb(this, satInfo->satLinkParent->getAddress(), satInfo->address, satInfo->opState, satInfo->stateCbMetadata);
+	}
 }
 
-/*satelite getOpState*/
-satOpState_t satelite::getOpState(void) {
+/*satellite getOpState*/
+satOpState_t satellite::getOpState(void) {
 	return satInfo->opState;
 }
 
-/*satelite getSatStats*/
-void satelite::getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats) {
+/*satellite getSatStats*/
+void satellite::getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats) {
 	xSemaphoreTake(satInfo->performanceCounterLock, portMAX_DELAY);
 	memcpy((void*)satStats_p, (void*)&(satInfo->performanceCounters), sizeof(satPerformanceCounters_t));
 	if (resetStats)
@@ -1504,8 +1545,8 @@ void satelite::getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats
 	xSemaphoreGive(satInfo->performanceCounterLock);
 }
 
-/*satelite clearSatStats*/
-void satelite::clearSatStats(void) {
+/*satellite clearSatStats*/
+void satellite::clearSatStats(void) {
 	xSemaphoreTake(satInfo->performanceCounterLock, portMAX_DELAY);
 	clearPerformanceCounters(&satInfo->performanceCounters);
 	xSemaphoreGive(satInfo->performanceCounterLock);
@@ -1513,16 +1554,16 @@ void satelite::clearSatStats(void) {
 
 /***** PRIVATE MEMBERS *****/
 
-/*satelite chkErrSec*/
-void satelite::chkErrSec(TimerHandle_t timerHandle) {
+/*satellite chkErrSec*/
+void satellite::chkErrSec(TimerHandle_t timerHandle) {
 	uint16_t ErrSum;
-	satelite* satObj;
+	satellite* satObj;
 
-	satObj = (satelite*)pvTimerGetTimerID(timerHandle);
+	satObj = (satellite*)pvTimerGetTimerID(timerHandle);
 	//Serial.printf("CRC Check %u\n", satObj->satInfo->performanceCounters.rxCrcErr);
 	if (!satObj->satInfo->errThresHigh)
 		return;
-	//Serial.printf("Check Satelite errored second\n");
+	//Serial.printf("Check Satellite errored second\n");
 	xSemaphoreTake(satObj->satInfo->performanceCounterLock, portMAX_DELAY);
 	ErrSum = satObj->satInfo->performanceCounters.rxCrcErrSec +
 		satObj->satInfo->performanceCounters.remoteCrcErrSec +
@@ -1539,21 +1580,24 @@ void satelite::chkErrSec(TimerHandle_t timerHandle) {
 		satObj->opDeBlock(SAT_OP_ERR_SEC);
 }
 
-/*satelite filterExp*/
-void satelite::filterExp(TimerHandle_t timerHandle) {
+/*satellite filterExp*/
+void satellite::filterExp(TimerHandle_t timerHandle) {
 	sensor_t* sensor;
 	sensor = (sensor_t*)pvTimerGetTimerID(timerHandle);
 	sensor->timerActive = false;
 	//Serial.printf("Filter timer expired for sensor %d\n", sensor->address);
 	if (sensor->currentSensorVal != sensor->filteredSensorVal) {
 		sensor->filteredSensorVal = sensor->currentSensorVal;
-		sensor->satObj->satInfo->senseCb(sensor->satObj, sensor->satObj->satInfo->satLinkParent->getAddress(), sensor->satObj->getAddress(), sensor->address, sensor->filteredSensorVal);
+		if (sensor->satObj->satInfo->senseCb)
+			sensor->satObj->satInfo->senseCb(sensor->satObj, sensor->satObj->satInfo->satLinkParent->getAddress(), sensor->satObj->getAddress(), sensor->address, sensor->filteredSensorVal, sensor->satObj->satInfo->senseCbMetadata);
+		//else
+			//Serial.printf("satellite::filterExp: No callback registered\n");
 	}
 }
 
-/*satelite genServerCrcErr*/
-void satelite::genServerCrcErr(void) {
-	//Serial.printf("Generating Server CRC Error for satelite: %d\n", satInfo->address);
+/*satellite genServerCrcErr*/
+void satellite::genServerCrcErr(void) {
+	//Serial.printf("Generating Server CRC Error for satellite: %d\n", satInfo->address);
 	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->performanceCounters.testRemoteCrcErr = 0;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invServerCrc = true;
@@ -1565,9 +1609,9 @@ void satelite::genServerCrcErr(void) {
 	assert(xTimerStart(satInfo->selfTestTimerHandle, 10) != pdFAIL);
 }
 
-/*satelite genClientCrcErr*/
-void satelite::genClientCrcErr(void) {
-	//Serial.printf("Generating Client CRC Error for satelite: %d\n", satInfo->address);
+/*satellite genClientCrcErr*/
+void satellite::genClientCrcErr(void) {
+	//Serial.printf("Generating Client CRC Error for satellite: %d\n", satInfo->address);
 	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->performanceCounters.testRxCrcErr = 0;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].invClientCrc = true;
@@ -1579,9 +1623,9 @@ void satelite::genClientCrcErr(void) {
 	assert(xTimerStart(satInfo->selfTestTimerHandle, 10) != pdFAIL);
 }
 
-/*satelite genWdErr*/
-void satelite::genWdErr(void) {
-	//Serial.printf("Generating WD Errorfor satelite: %d\n", satInfo->address);
+/*satellite genWdErr*/
+void satellite::genWdErr(void) {
+	//Serial.printf("Generating WD Errorfor satellite: %d\n", satInfo->address);
 	xSemaphoreTake(satInfo->satLinkParent->satLinkInfo->actUpdateLock, portMAX_DELAY);
 	satInfo->performanceCounters.testWdErr = 0;
 	satInfo->satLinkParent->satLinkInfo->txSatStruct[satInfo->address].setWdErr = true;
@@ -1593,21 +1637,21 @@ void satelite::genWdErr(void) {
 	assert(xTimerStart(satInfo->selfTestTimerHandle, 10) != pdFAIL);
 }
 
-/*satelite selfTestTimeout*/
-void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
-	satelite* satObj = (satelite*)pvTimerGetTimerID(timerHandle);
+/*satellite selfTestTimeout*/
+void satellite::selfTestTimeout(TimerHandle_t timerHandle) {
+	satellite* satObj = (satellite*)pvTimerGetTimerID(timerHandle);
 
 	switch (satObj->satInfo->selftestPhase) {
 	case SERVER_CRC_TEST:
 		if (!satObj->satInfo->performanceCounters.testRemoteCrcErr) {
-			//Serial.printf("Selftest expected remote CRC errors but got none for satelite: %d\n", satObj->satInfo->address);
+			//Serial.printf("Selftest expected remote CRC errors but got none for satellite: %d\n", satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_SELFTEST_SERVER_CRC_ERR);
 			satObj->satInfo->serverCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
 			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
 		else {
-			//Serial.printf("Selftest got %d remote CRC errors for satelite: %d\n", satObj->satInfo->performanceCounters.testRemoteCrcErr, satObj->satInfo->address);
+			//Serial.printf("Selftest got %d remote CRC errors for satellite: %d\n", satObj->satInfo->performanceCounters.testRemoteCrcErr, satObj->satInfo->address);
 			satObj->satInfo->serverCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->genClientCrcErr();
 		}
@@ -1615,14 +1659,14 @@ void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
 
 	case CLIENT_CRC_TEST:
 		if (!satObj->satInfo->performanceCounters.testRxCrcErr) {
-			//Serial.printf("Selftest expected RX CRC errors but got none for satelite: %d\n", satObj->satInfo->address);
+			//Serial.printf("Selftest expected RX CRC errors but got none for satellite: %d\n", satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_SELFTEST_CLIENT_CRC_ERR);
 			satObj->satInfo->clientCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
 			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
 		else {
-			//Serial.printf("Selftest got %d rx CRC errors for satelite: %d\n", satObj->satInfo->performanceCounters.testRxCrcErr, satObj->satInfo->address);
+			//Serial.printf("Selftest got %d rx CRC errors for satellite: %d\n", satObj->satInfo->performanceCounters.testRxCrcErr, satObj->satInfo->address);
 			satObj->satInfo->clientCrcTest = SAT_CRC_TEST_INACTIVE;
 			satObj->genWdErr();
 		}
@@ -1630,14 +1674,14 @@ void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
 
 	case WD_TEST:
 		if (!satObj->satInfo->performanceCounters.testWdErr) {
-			//Serial.printf("Selftest expected WD errors but got none for satelite: %d\n", satObj->satInfo->address);
+			//Serial.printf("Selftest expected WD errors but got none for satellite: %d\n", satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_SELFTEST_WD_ERR);
 			satObj->satInfo->wdTest = SAT_WD_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
 			satObj->satInfo->satLinkParent->satLinkInfo->satSelfTest = NO_TEST;
 		}
 		else {
-			//Serial.printf("Selftest ENDED!!! got %d wd errors for satelite: %d\n", satObj->satInfo->performanceCounters.testWdErr, satObj->satInfo->address);
+			//Serial.printf("Selftest ENDED!!! got %d wd errors for satellite: %d\n", satObj->satInfo->performanceCounters.testWdErr, satObj->satInfo->address);
 			satObj->satInfo->selfTestCb(satObj, satObj->satInfo->satLinkParent->satLinkInfo->address, satObj->satInfo->address, SAT_OK);
 			satObj->satInfo->wdTest = SAT_WD_TEST_INACTIVE;
 			satObj->satInfo->selftestPhase = NO_TEST;
@@ -1651,13 +1695,13 @@ void satelite::selfTestTimeout(TimerHandle_t timerHandle) {
 	}
 }
 
-/*satelite selftestRes*/
-void satelite::selftestRes(satelite* satHandle_p, uint8_t satLinkAddr_p, uint8_t satAddr_p, satErr_t err_p) {
+/*satellite selftestRes*/
+void satellite::selftestRes(satellite* satHandle_p, uint8_t satLinkAddr_p, uint8_t satAddr_p, satErr_t err_p) {
 	if (err_p)
 		satHandle_p->opBlock(SAT_OP_FAIL);
 	//Serial.printf("Selftest executed\n");
 	return;
 }
-/*======================================================= END Class satelite ===================================================================*/
+/*======================================================= END Class satellite ===================================================================*/
 
 /*============================================= END Function and Class implementation ==========================================================*/

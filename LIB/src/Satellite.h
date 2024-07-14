@@ -22,8 +22,8 @@
 // See README.md
 /*============================================================== END Description ===============================================================*/
 
-#ifndef SATELITELIB_H
-#define SATELITELIB_H
+#ifndef SATELLITELIB_H
+#define SATELLITELIB_H
 
 /*==============================================================================================================================================*/
 /* Include files                                                                                                                                */
@@ -33,8 +33,8 @@
 #include "freertos/timers.h"
 #include "driver/rmt.h"
 #include "Arduino.h"
-class sateliteLink;
-class satelite;
+class satelliteLink;
+class satellite;
 /*============================================================= END Include files ==============================================================*/
 
 /*==============================================================================================================================================*/
@@ -85,18 +85,19 @@ typedef uint8_t satOpState_t;
 typedef uint8_t actMode_t;
 
 //Call-back prototypes - see README.md
-typedef void (*satLinkStateCb_t)(sateliteLink* sateliteLink_p, uint8_t LinkAddr_p, satOpState_t satOpState_p, void* metaData_p);
-typedef void (*satStateCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satOpState_t satOpState, void* metaData_p);
-typedef void (*satSenseCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, uint8_t senseAddr_p, bool senseVal_p);
-typedef void (*satDiscoverCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, bool exists_p, void* metaData_p);
-typedef void (*selfTestCb_t)(satelite* satelite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satErr_t selftestErr_p);
+typedef void (*satLinkStateCb_t)(satelliteLink* satelliteLink_p, uint8_t LinkAddr_p, satOpState_t satOpState_p, void* metaData_p);
+typedef void (*satLinkScanCb_t)(void* metaData_p);
+typedef void (*satStateCb_t)(satellite* satellite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satOpState_t satOpState, void* metaData_p);
+typedef void (*satSenseCb_t)(satellite* satellite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, uint8_t senseAddr_p, bool senseVal_p, void* metadata_p);
+typedef void (*satDiscoverCb_t)(satellite* satellite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, bool exists_p, void* metaData_p);
+typedef void (*selfTestCb_t)(satellite* satellite_p, uint8_t LinkAddr_p, uint8_t SatAddr_p, satErr_t selftestErr_p);
 
 struct satWire_t {
 	bool dirty;													// If true the values have been updated
 	bool invServerCrc;											// If true, outgoing Server CRC checksum will be invalidated
 	bool invClientCrc;											// If true, outgoing SAT CRC checksum will be invalidated
-	bool setWdErr;												// If true the satelite with simulate a wd error without disabling the actuators
-	bool enable;												// If true the satelite actuators will be enabled
+	bool setWdErr;												// If true the satellite with simulate a wd error without disabling the actuators
+	bool enable;												// If true the satellite actuators will be enabled
 	// Link data representation in transmission order - MSB is sent first
 	uint8_t sensorVal;											// 8 bits (MSB). Sensor value, can be written by any one
 	uint8_t actVal[4];											// 8 bits x 4
@@ -111,8 +112,8 @@ struct satWire_t {
 	uint8_t crc;												// 4 bit
 };
 
-struct satStatus_t {											// Satelite status - shared mem
-	bool dirty;													// dirty is set by the producer (sateliteLink) and cleared by the consumer (satelite)
+struct satStatus_t {											// Satellite status - shared mem
+	bool dirty;													// dirty is set by the producer (satelliteLink) and cleared by the consumer (satellite)
 	bool wdErr;													// Watchdog error - Watchdog error - Latched until dirty is reset
 	bool remoteCrcErr;											// Remote CRC error - Latched until dirty is reset
 	bool rxCrcErr;												// Receive CRC error - Latched until dirty is reset
@@ -121,7 +122,7 @@ struct satStatus_t {											// Satelite status - shared mem
 };
 
 struct sensor_t {
-	satelite* satObj;											// Satelite object - used for the static filter method to access the satelite data structure
+	satellite* satObj;											// Satellite object - used for the static filter method to access the satellite data structure
 	uint8_t address;											// Sensor local address/index
 	uint16_t filterTime;										// Sensor filter time
 	TimerHandle_t timerHandle;									// Sensor filter timer handle
@@ -153,19 +154,19 @@ struct satPerformanceCounters_t {
 };
 
 struct satLinkInfo_t {
-	uint8_t address;											//sateliteLink Address
-	rmt_channel_t txCh;											// Satelite link TX channel
-	rmt_channel_t rxCh;											// Satelite link RX channel
-	gpio_num_t txPin;											// Satelite link TX Pin
-	gpio_num_t rxPin;											// Satelite link RX Pin
-	uint8_t txMemblck;											// Satelite link TX RMT Memory block
-	uint8_t rxMemblck;											// Satelite link RX RMT Memory block
+	uint8_t address;											//satelliteLink Address
+	rmt_channel_t txCh;											// Satellite link TX channel
+	rmt_channel_t rxCh;											// Satellite link RX channel
+	gpio_num_t txPin;											// Satellite link TX Pin
+	gpio_num_t rxPin;											// Satellite link RX Pin
+	uint8_t txMemblck;											// Satellite link TX RMT Memory block
+	uint8_t rxMemblck;											// Satellite link RX RMT Memory block
 	RingbufHandle_t rb;											// RMT Receive ring buffer
 	UBaseType_t pollTaskPrio;									// Poll/Link scan task prio
 	UBaseType_t pollTaskCore;									// Poll/Link scan task core
 	uint8_t scanInterval;										// link Scan intervall
-	satAdmState_t admState;										// Satelite link administrativ status
-	satOpState_t opState;										// Satelite link operational status - a bitmap showing the cause of the operational fault
+	satAdmState_t admState;										// Satellite link administrativ status
+	satOpState_t opState;										// Satellite link operational status - a bitmap showing the cause of the operational fault
 	satWire_t txSatStruct[MAX_NO_OF_SAT_PER_CH + 1];			// Transmit data struct buffer
 	satWire_t rxSatStruct[MAX_NO_OF_SAT_PER_CH + 1];			// Receive data struct buffer
 	uint8_t txSatBuff[(MAX_NO_OF_SAT_PER_CH + 1) * 8];			// Transmit buffer
@@ -177,31 +178,34 @@ struct satLinkInfo_t {
 	uint32_t errThresHigh;										// Cumulative link error second  threshold (local and remote)
 	uint32_t errThresLow;										// Cumulative link error second cease threshold (local and remote)
 	int64_t oneSecTimer;										// One secont timer counter for ErrSec evaluation
-	uint8_t noOfSats;											// Number of satelites on the link
+	uint8_t noOfSats;											// Number of satellites on the link
 	uint8_t satSelfTest;										// Indication of a sat selftest ongoing on the link MAYBE WE CAN RUN SELFTESTS IN PARALLEL
-	satelite* sateliteHandle[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the satelite object handles
+	satellite* satelliteHandle[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the satellite object handles
 	satStatus_t satStatus[MAX_NO_OF_SAT_PER_CH + 1];			// An array with the sat status structs
 	satLinkStateCb_t satLinkStateCb;							// Call-back for link operational status changes
 	void* satLinkStateCbMetadata;								// Call-back meta data
-	satDiscoverCb_t satDiscoverCb;								// Call-back for discovered and removed satelites
-	void* satDiscoverCbMetadata;									// Call-back meta data
+	satDiscoverCb_t satDiscoverCb;								// Call-back for discovered and removed satellites
+	void* satDiscoverCbMetadata;								// Call-back meta data
+	satLinkScanCb_t satLinkScanCb;								// Call-back hook to the scan loop
+	void* satLinkScanCbMetadata;								// Call-back meta data
 	TaskHandle_t scanTaskHandle;								// Link scan task handle
 	TimerHandle_t linkReEstablishTimerHandle;					// Link re-establishment timer handle
-	uint8_t serverCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Server CRC Test state for each satelite
-	uint8_t clientCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Client CRC Test state for each satelite
-	uint8_t wdTst[MAX_NO_OF_SAT_PER_CH + 1];					// Watchdog test state for each satelite
+	uint8_t serverCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Server CRC Test state for each satellite
+	uint8_t clientCrcTst[MAX_NO_OF_SAT_PER_CH + 1];				// Client CRC Test state for each satellite
+	uint8_t wdTst[MAX_NO_OF_SAT_PER_CH + 1];					// Watchdog test state for each satellite
 	bool scan;													// Link scan state
 	SemaphoreHandle_t actUpdateLock;							// Actuator update lock
 };
 
 struct satInfo_t {
-	uint8_t address;											// Satelite local address on the Satelite link
-	actMode_t actMode[NO_OF_ACT];								// Satelite Actuators mode array
-	uint8_t actVal[NO_OF_ACT];									// Satelite Actuators value array
+	uint8_t address;											// Satellite local address on the Satellite link
+	actMode_t actMode[NO_OF_ACT];								// Satellite Actuators mode array
+	uint8_t actVal[NO_OF_ACT];									// Satellite Actuators value array
 	sensor_t sensors[NO_OF_SENS];								// Sensor struct array
 	satStateCb_t stateCb;										// Call-back function for state changes
 	void* stateCbMetadata;
 	satSenseCb_t senseCb;										// Call-back function for sensor changes
+	void* senseCbMetadata;										// Callback meta data
 	selfTestCb_t selfTestCb;									// Call-back function for self-test results
 	satPerformanceCounters_t performanceCounters;				// Performance counter struct
 	uint8_t serverCrcTest;										// Server CRC Test state
@@ -213,8 +217,8 @@ struct satInfo_t {
 	uint32_t errThresHigh;										// Cumulative link error second  threshold (local and remote)
 	uint32_t errThresLow;										// Cumulative link error second cease threshold (local and remote)
 	satAdmState_t admState;										// Administrative state
-	satOpState_t opState;										// Satelite operational state - a bitmap showing the cause the oerational failure
-	sateliteLink* satLinkParent;								// A handle to the parent Satelite link
+	satOpState_t opState;										// Satellite operational state - a bitmap showing the cause the oerational failure
+	satelliteLink* satLinkParent;								// A handle to the parent Satellite link
 	SemaphoreHandle_t performanceCounterLock;					// Lock protecting the access of performance counters (Read-Modify-Write)
 };
 
@@ -222,7 +226,7 @@ struct satInfo_t {
 #define SAT_ADM_ENABLE					0						// The ADMIN state ENABLE
 #define SAT_ADM_DISABLE					1						// The ADMIN state DISABLE, 
 
-// Adminastrive states and causes
+// Operative states and causes
 #define SAT_OP_WORKING					0x0000					// The OP state is set to working, the object is working
 #define SAT_OP_WORKING_STR				"WORKING"
 #define SAT_OP_INIT						0x0001					// The OP state has the atribute INIT - initializing.
@@ -240,18 +244,18 @@ struct satInfo_t {
 #define SAT_OK							0x00					// Success
 #define SAT_ERR_SYMBOL_ERR				0x01					// Link symbol error
 #define SAT_ERR_EXESSIVE_SATS_ERR		0x02					// Too many errors
-#define SAT_ERR_GEN_SATLINK_ERR			0x03					// General satelite error
-#define SAT_ERR_WRONG_STATE_ERR			0x04					// The order coul not be performed because the object is in the wrong state
+#define SAT_ERR_GEN_SATLINK_ERR			0x03					// General satellite error
+#define SAT_ERR_WRONG_STATE_ERR			0x04					// The order could not be performed because the object is in the wrong state
 #define SAT_ERR_DEP_BLOCK_STATUS_ERR	0x05					// The order could not be performed because a related object is in the wrong state
 #define SAT_ERR_PARAM_ERR				0x06					// Parameters does not conform to what is expected
 #define SAT_ERR_RMT_ERR					0x07					// RMT error
-#define SAT_ERR_EXESSIVE_SATS			0x08					// Too many satelites on the link
+#define SAT_ERR_EXESSIVE_SATS			0x08					// Too many satellites on the link
 #define SAT_ERR_SCANTASK_ERR			0x09					// The scan task could not be started
 #define SAT_ERR_NOT_EXIST_ERR			0x0A					// The resource does not exist
 #define SAT_ERR_BUFF_SMALL_ERR			0x0B					// Buffer too small
 #define SAT_ERR_BUSY_ERR				0x0C					// Function is busy
 #define SAT_SELFTEST_SERVER_CRC_ERR		0x0D					// Selftest failed - Server TX CRC error not detected
-#define SAT_SELFTEST_CLIENT_CRC_ERR		0x0E					// Selftest failed - Client/Satelite TX CRC error not detected
+#define SAT_SELFTEST_CLIENT_CRC_ERR		0x0E					// Selftest failed - Client/Satellite TX CRC error not detected
 #define SAT_SELFTEST_WD_ERR				0x0F					// Selftest failed - Watchdog error not detected
 
 // PM report format items - see README.md
@@ -268,7 +272,7 @@ struct satInfo_t {
 #define ADM_STATE						0x0400
 #define OP_STATE						0x0800
 
-//Satelite modes - see README.md
+//Satellite modes - see README.md
 #define SATMODE_LOW						0x00
 #define SATMODE_HIGH					0x01
 #define SATMODE_PWM1_25K				0x02
@@ -317,9 +321,9 @@ satErr_t opStateToStr(satOpState_t opState_p, char* outputStr_p, uint8_t length_
 /*             uint16_t* usedBuff_p: How much of the buffer was used.                                                                           */
 /*             uint16_t buffOffset_p: Offset for filling in the buffer.                                                                         */
 /*             uint8_t linkAddr_p: Link address for the report.                                                                                 */
-/*             uint8_t satAddr_p`*: Satelite address for the report.                                                                            */
-/*             satAdmState_t admState_p: Administrative state for the object being reported (sateliteLink or satelite).                         */
-/*             satOpState_t opState_p: Operational state for the object being reported (sateliteLink or satelite).                              */
+/*             uint8_t satAddr_p`*: Satellite address for the report.                                                                            */
+/*             satAdmState_t admState_p: Administrative state for the object being reported (satelliteLink or satellite).                         */
+/*             satOpState_t opState_p: Operational state for the object being reported (satelliteLink or satellite).                              */
 /*             satPerformanceCounters_t* pmdata_p: Performance data structure.                                                                  */
 /*             uint16_t reportColumnItems: What pm data columns to include - see the format directives below.                                   */
 /*             uint16_t reportItemsMask: What pm data to report on.                                                                             */
@@ -402,20 +406,20 @@ void clearPerformanceCounters(satPerformanceCounters_t* performanceCounters_p);
 
 
 /*==============================================================================================================================================*/
-/* Class: sateliteLink                                                                                                                          */
-/* Purpose: The sateliteLink class manages the low-level Satelite link (I.e. OSI L1, L2 and L3). It is responsible for discovery-, and          */
-/* topology management of Satelites sitting on the Satelite link, but also responsible for scanning the link (providing instructions and        */
-/* pulling results from all the Satelites on a Satelite link), as well as responsible for the integrity of the link. It interchanges raw data   */
-/* from/to the satelite class objects of the Satelite link.                                                                                     */
+/* Class: satelliteLink                                                                                                                          */
+/* Purpose: The satelliteLink class manages the low-level Satellite link (I.e. OSI L1, L2 and L3). It is responsible for discovery-, and          */
+/* topology management of Satellites sitting on the Satellite link, but also responsible for scanning the link (providing instructions and        */
+/* pulling results from all the Satellites on a Satellite link), as well as responsible for the integrity of the link. It interchanges raw data   */
+/* from/to the satellite class objects of the Satellite link.                                                                                     */
 /* Methods: See README.md                                                                                                                       */
-/* Data structures: See Satelite.h                                                                                                              */
+/* Data structures: See Satellite.h                                                                                                              */
 /*==============================================================================================================================================*/
-class sateliteLink {
+class satelliteLink {
 public:
 	//methods
-	sateliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxPin_p, rmt_channel_t txCh_p, rmt_channel_t rxCh_p, uint8_t txRmtMemBank_p,
+	satelliteLink(uint8_t address_p, gpio_num_t txPin_p, gpio_num_t rxPin_p, rmt_channel_t txCh_p, rmt_channel_t rxCh_p, uint8_t txRmtMemBank_p,
 		uint8_t rxRmtMemBank_p, UBaseType_t pollTaskPrio_p, UBaseType_t pollTaskCore_p, uint8_t scanInterval_p);
-	~sateliteLink(void);
+	~satelliteLink(void);
 	satErr_t enableSatLink(void);
 	satErr_t disableSatLink(void);
 	void setErrTresh(uint16_t p_errThresHigh, uint16_t p_errThresLow);
@@ -423,24 +427,26 @@ public:
 	void satLinkUnRegStateCb(void);
 	void satLinkRegSatDiscoverCb(satDiscoverCb_t satDiscoverCb_p, void* metaData_p);
 	void satLinkUnRegSatDiscoverCb(void);
+	void satLinkRegScanCb(satLinkScanCb_t satLinkScanCb_p, void* metaData_p);
+	void satLinkUnRegScanCb(void);
 	uint8_t getAddress(void);
 	uint8_t getSatLinkNoOfSats(void);
 	satErr_t getSensorValRaw(uint8_t satAddress_p, uint8_t* sensorVal_p);
 	void getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats);
 	void clearSatStats(void);
-	satelite* getsatHandle(uint8_t satAddr_p);
-	satErr_t admBlock(void);
-	satErr_t admDeBlock(void);
+	satellite* getsatHandle(uint8_t satAddr_p);
 	satAdmState_t getAdmState(void);
+	satOpState_t getOpState(void);
 	void opBlock(satOpState_t opState_p);
 	void opDeBlock(satOpState_t opState_p);
-	satOpState_t getOpState(void);
 
 	//Data structures
 	satLinkInfo_t* satLinkInfo;
 
 private:
 	// methods
+	satErr_t admBlock(void);
+	satErr_t admDeBlock(void);
 	satErr_t satLinkDiscover(void);
 	satErr_t satLinkStartScan(void);
 	satErr_t satLinkStopScan(void);
@@ -451,24 +457,24 @@ private:
 	// Data structures
 	// -
 };
-/*===================================================== END Class sateliteLink =================================================================*/
+/*===================================================== END Class satelliteLink =================================================================*/
 
 
 
 /*==============================================================================================================================================*/
-/* Class: satelite                                                                                                                              */
-/* Purpose: The satelite class is responsible for the higher-level functionality of each satelite (OSI L4-L7). Each satelite class object gets  */
-/* created through its parent sateliteLink class object after the sateliteLink Auto discovery process, Satelite users get informed about the    */
-/* existence of a satelite through call-backs registered through the parent sateliteLink class object.The satelite class objects have methods   */
-/* for setting the actuators, receiving sensor values, and supervising the functionality and the integrity of each satelite.                    */
+/* Class: satellite                                                                                                                              */
+/* Purpose: The satellite class is responsible for the higher-level functionality of each satellite (OSI L4-L7). Each satellite class object gets  */
+/* created through its parent satelliteLink class object after the satelliteLink Auto discovery process, Satellite users get informed about the    */
+/* existence of a satellite through call-backs registered through the parent satelliteLink class object.The satellite class objects have methods   */
+/* for setting the actuators, receiving sensor values, and supervising the functionality and the integrity of each satellite.                    */
 /* Methods: See README.md                                                                                                                       */
-/* Data structures: See Satelite.h                                                                                                              */
+/* Data structures: See Satellite.h                                                                                                              */
 /*==============================================================================================================================================*/
-class satelite {
+class satellite {
 public:
 	// Methods
-	satelite(sateliteLink* satLink_p, uint8_t satAddr_p);
-	~satelite(void);
+	satellite(satelliteLink* satLink_p, uint8_t satAddr_p);
+	~satellite(void);
 	satErr_t enableSat(void);
 	satErr_t disableSat(void);
 	void setErrTresh(uint16_t errThresHigh_p, uint16_t errThresLow_p);
@@ -477,7 +483,7 @@ public:
 	satErr_t setSenseFilter(uint16_t senseFilter_p, uint8_t senseIndex_p);
 	void getSatStats(satPerformanceCounters_t* satStats_p, bool resetStats);
 	void clearSatStats(void);
-	void satRegSenseCb(satSenseCb_t fn);
+	void satRegSenseCb(satSenseCb_t fn, void* metaData_p);
 	void satUnRegSenseCb(void);
 	satErr_t satSelfTest(selfTestCb_t selfTestCb_p);
 	bool getSenseVal(uint8_t senseAddr);
@@ -486,30 +492,29 @@ public:
 	uint8_t getAddress(void);
 	void senseUpdate(satWire_t* rxData);
 	void statusUpdate(satStatus_t* status_p);
-	satErr_t admBlock(void);
-	satErr_t admDeBlock(void);
 	satAdmState_t getAdmState(void);
+	satOpState_t getOpState(void);
 	void opBlock(satOpState_t opState_p);
 	void opDeBlock(satOpState_t opState_p);
-	satOpState_t getOpState(void);
-
 	// Data structures
 	satInfo_t* satInfo;
 
 private:
 	// Methods
+	satErr_t admBlock(void);
+	satErr_t admDeBlock(void);
 	static void chkErrSec(TimerHandle_t timerHandle);
 	static void filterExp(TimerHandle_t timerHandle);
 	void genServerCrcErr(void);
 	void genClientCrcErr(void);
 	void genWdErr(void);
 	static void selfTestTimeout(TimerHandle_t timerHandle);
-	static void selftestRes(satelite* satHandle_p, uint8_t satLinkAddr_p, uint8_t satAddr_p, satErr_t err_p);
+	static void selftestRes(satellite* satHandle_p, uint8_t satLinkAddr_p, uint8_t satAddr_p, satErr_t err_p);
 
 	// Data structures
 	// -
 };
-/*======================================================= END Class satelite ===================================================================*/
+/*======================================================= END Class satellite ===================================================================*/
 
 /*================================================ END Function and Class prototypes ===========================================================*/
-#endif /*SATELITELIB_H*/
+#endif /*SATELLITELIB_H*/
